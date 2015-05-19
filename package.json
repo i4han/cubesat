@@ -1,0 +1,33 @@
+{
+  "name": "cubesat",
+  "version": "0.4.1",
+  "os" : [ "!win32" ],
+  "description": "sat: cubesat utility",
+  "main": "x.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Isaac Han <isaac@hi16.ca>",
+  "bin": { "sat" : "./sat.coffee" }, 
+  "dependencies": {
+      "coffee-script": "*",
+      "underscore": "*",
+      "stylus": "*",
+      "mongodb": "*",
+      "chokidar": "*",
+      "jade": "*",
+      "ps-node": "*",
+      "eco": "*",
+      "async": "*",
+      "nconf": "*",
+      "absurd": "*",
+      "dotenv": "*",
+      "minimist": "*"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "https://github.com/i4han/cubesat.git",
+  "author": "Isaac Han <isaac@hi16.ca>",
+  "license": "GPL-2.0 for non-profit"
+}
