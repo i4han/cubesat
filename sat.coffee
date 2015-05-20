@@ -6,13 +6,13 @@ ps       =  require 'ps-node'
 cs       =  require 'coffee-script'
 eco      =  require 'eco'
 chokidar =  require 'chokidar'
-{ncp}    =  require 'ncp'
+#{ncp}    =  require 'ncp'
 path     =  require 'path'
 https    =  require 'https'
 jade     =  require 'jade'
 stylus   =  require 'stylus'
 async    =  require 'async'
-cson     =  require 'CSON'
+#cson     =  require 'CSON'
 dotenv   =  require 'dotenv'
 nconf    =  require 'nconf'
 api      =  require('absurd')()
@@ -57,7 +57,7 @@ settings_json =  add build_path, 'settings.json'
 nconf.file file: add sat_path, 'config.json'
 
 @Theme = @Modules = {}
-theme_cson = ''
+#theme_cson = ''
 
 init_settings = ->
     Settings = loadSettings settings_path
@@ -75,7 +75,6 @@ build_lib_path       = add build_path, lib_dir
 build_public_path    = add build_path, public_dir
 
 style_path  = env('STYLE_PATH') or add site_path, 'style'
-
 
 lib_files    = x.toArray Settings.lib_files
 my_packages  = x.toArray Settings.packages
@@ -194,9 +193,9 @@ hold_watch = (sec) -> updated = process.hrtime()[0] + sec
 
 start_up = ->
     coffee_alone()
-    chokidar.watch(settings_cson).on 'change', -> settings()
+    #chokidar.watch(settings_cson).on 'change', -> settings()
     #chokidar.watch(test_lib_path).on 'change', (d) -> buid() # cp d, add build_lib_path, path.basename d
-    lib_paths.concat([index_coffee_path, theme_cson]).map (f) -> 
+    lib_paths.concat([index_coffee_path]).map (f) -> 
         chokidar.watch(f).on 'change', -> build()
     hold_watch(2)
     package_paths.map (p) ->
@@ -236,14 +235,14 @@ commands = ->
         process.exit 1
 
 meteor_packages_removed = 'autopublish insecure'.split ' '
-meteor_packages = 'service-configuration accounts-password fortawesome:fontawesome http iron:router isaac:satellite jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus underscore'.split ' '
+meteor_packages = 'service-configuration accounts-password fortawesome:fontawesome http iron:router isaac:cubesat jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus'.split ' '
 mobile_packages = []
 
 meteor_run_ios  = -> meteor_command 'run', 'ios', mobile_path
 add_packages    = -> (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add',    p, mobile_path).on 'exit', f), meteor_run_ios)()
 remove_packages = -> (meteor_packages_removed                .reduce ((f, p) -> -> (meteor_command 'remove', p, mobile_path).on 'exit', f), add_packages  )()
 prepare_mobile  = ->
-    'client lib public resources'.split(' ').map (d) -> ncp add(test_path, d), add mobile_path, d
+    'client lib public resources'.split(' ')     .map (d) -> #ncp add(test_path, d), add mobile_path, d
     'mobile.html mobile.css mobile.js'.split(' ').map (f) -> fs.unlink add(mobile_path, f), (e) -> error e
     (['install-sdk', 'add-platform'].reduce ((f, c) -> -> (meteor_command c, 'ios', mobile_path).on 'exit', f), remove_packages)()
 update_mobile = ->
@@ -317,8 +316,7 @@ directives =
 
 write_build = (file, data) ->
     data.length > 0 and fs.readFile f = add(build_client_path, file), 'utf8', (err, d) ->
-        (!d? or data != d) and fs.writeFile f, data, (e) ->
-            console.log new Date(), f
+        (!d? or data != d) and fs.writeFile f, data, (e) -> console.log new Date(), f
             # fs.writeFile add(mobile_client_path, file), data
 
 toObject = (v) ->
