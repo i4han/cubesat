@@ -1,33 +1,36 @@
 {
-  "name": "cubesat",
-  "version": "0.4.1",
-  "os" : [ "!win32" ],
-  "description": "sat: cubesat utility",
-  "main": "x.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Isaac Han <isaac@hi16.ca>",
-  "bin": { "sat" : "./sat.coffee" }, 
-  "dependencies": {
-      "coffee-script": "*",
-      "underscore": "*",
-      "stylus": "*",
-      "mongodb": "*",
-      "chokidar": "*",
-      "jade": "*",
-      "ps-node": "*",
-      "eco": "*",
-      "async": "*",
-      "nconf": "*",
-      "absurd": "*",
-      "dotenv": "*",
-      "minimist": "*"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": "https://github.com/i4han/cubesat.git",
-  "author": "Isaac Han <isaac@hi16.ca>",
-  "license": "GPL-2.0 for non-profit"
+    "name": "cubesat",
+    "version": "0.4.14",
+    "os" : [ "!win32" ],
+    "description": "sat: cubesat utility",
+    "main": "js/x.js",
+    "files": [
+        "js/x.js",
+        "js/sat.js"
+    ],
+    "bin": { "sat" : "./js/sat.js" }, 
+    "scripts": {
+        "prepublish": "ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Isaac Han <isaac@hi16.ca>",
+    "contributors": [
+        "Stu Pae <stu.pae@gmail.com>"
+    ],
+    "dependencies": {
+        "coffee-script": "*",
+        "stylus": "*",
+        "chokidar": "*",
+        "jade": "*",
+        "ps-node": "*",
+        "eco": "*",
+        "async": "*",
+        "nconf": "*",
+        "absurd": "*",
+        "dotenv": "*",
+        "minimist": "*"
+    },
+    "repository": "https://github.com/i4han/cubesat.git",
+    "author": "Isaac Han <isaac@hi16.ca>",
+    "license": "GPL-2.0 for non-commercial"
 }

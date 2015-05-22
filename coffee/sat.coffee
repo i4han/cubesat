@@ -6,19 +6,17 @@ ps       =  require 'ps-node'
 cs       =  require 'coffee-script'
 eco      =  require 'eco'
 chokidar =  require 'chokidar'
-#{ncp}    =  require 'ncp'
-path     =  require 'path'
 https    =  require 'https'
 jade     =  require 'jade'
 stylus   =  require 'stylus'
 async    =  require 'async'
-#cson     =  require 'CSON'
 dotenv   =  require 'dotenv'
 nconf    =  require 'nconf'
 api      =  require('absurd')()
 {spawn, exec} = require 'child_process'
 {x}      =  require 'cubesat'
 
+cs.register()
 command  =  process.argv[2]
 argv     =  require('minimist') process.argv[3..]
 
@@ -46,8 +44,9 @@ fs.existsSync(dotenv_path = add site_path, '.env') and dotenv.config path:dotenv
 build_path = add site_path, build_dir
 index_coffee_path = add site_path, index_coffee
 env = (v) -> (_path = process.env[v]) and _path.replace /^~\//, home + '/'
-satellite_path = env('SATELLITE_PATH') or add home, '.satellite'
-settings_path  = env('SETTINGS_PATH')  or add satellite_path, 'settings.coffee'
+cubesat_path   = env('CUBESAT_PATH')  or add home, '.cubesat'
+settings_path  = env('SETTINGS_PATH') or add cubesat_path, 'settings.coffee'
+
 
 nocacheRequire = (f) -> delete require.cache[f] and require f
 loadSettings   = (f) -> (fs.existsSync(f) and x.func (nocacheRequire f).Settings) or {}
@@ -64,7 +63,7 @@ init_settings = ->
     x.extend Settings, loadSettings index_coffee_path
     (site = Settings.site) and (local = Settings.local) and local[site] and x.extend Settings, local[site]
     @Settings = Settings
-init_settings()
+init_settings() # check if command, .sat and index_coffee
 
 lib_dir    = 'lib'
 client_dir = 'client'
@@ -144,24 +143,25 @@ daemon = ->
         'log.io-server'    in node_ps or spawn 'log.io-server',    [], stdio:'inherit'
         'log.io-harvester' in node_ps or setTimeout( ( -> spawn 'log.io-harvester', [], stdio:'inherit' ), 100 )
 
-coffee_watch = (o, f) -> spawn 'coffee', ['-o', o, '-wbc', f], stdio:'inherit'
 coffee_clean = ->
     ps.lookup command: 'node',   psargs: 'ux', (e, a) -> a.map (p) -> 
         '-wbc' == p.arguments?[3] and process.kill p.pid, 'SIGKILL'
 
+coffee_watch = (c, js) -> spawn 'coffee', ['-o', js, '-wbc', c], stdio:'inherit'
+
 coffee_compile = ->
     mkdir build_lib_path
-    watched_coffee = coffee_paths()
-    package_paths and package_paths.map (p) -> (fs.readdirSync p).map (f) -> 
-        isType(f, 'coffee') and watched_coffee.push add p, f
+    console.log 'coffee'
+    coffee_dir = [site_path] 
+    js_dir     = [build_lib_path]
+    package_paths and package_paths.map (p) ->
+        coffee_dir.push add p, 'coffee'
+        js_dir    .push add p, 'js'
     ps.lookup command: 'node',   psargs: 'ux', (e, a) -> a.map (p, i) -> 
         if '-wbc' == p.arguments?[3] and (c = p.arguments[4])?
-            if (i = watched_coffee.indexOf(c)) <  0 then process.kill p.pid, 'SIGKILL'
-            else watched_coffee.splice(i, 1)
-        if a.length - 1 == i
-            watched_coffee.map (c) -> 
-                if c.match /\/packages\// then coffee_watch path.dirname(c), c
-                else coffee_watch build_lib_path, c
+            if (i = coffee_dir.indexOf(c)) <  0 then process.kill p.pid, 'SIGKILL'
+            else [coffee_dir.splice(i, 1), js_dir.splice(i, 1)]
+        a.length - 1 == i and coffee_dir.map (c, j) -> coffee_watch c, js_dir[j]
 
 meteor = (dir, port='3000') ->
     cd dir
@@ -183,6 +183,11 @@ meteor_command = (command, argument, path) ->
     cd path
     console.log 'meteor', command, argument
     spawn 'meteor', [command, argument], stdio:'inherit'
+
+spawn_command = (bin, command, args, path) -> 
+    path and cd path
+    console.log bin, command, args.join ' '
+    spawn bin, [command].concat(args), stdio:'inherit'
 
 start_meteor = ->
     stop_meteor -> 
@@ -315,8 +320,8 @@ directives =
         f: (n, b) -> stylus(b).render() + '\n'
 
 write_build = (file, data) ->
-    data.length > 0 and fs.readFile f = add(build_client_path, file), 'utf8', (err, d) ->
-        (!d? or data != d) and fs.writeFile f, data, (e) -> console.log new Date(), f
+    data.length > 0 and fs.readFile fwrite = add(build_client_path, file), 'utf8', (err, d) ->
+        (!d? or data != d) and fs.writeFile fwrite, data, (e) -> console.log new Date(), fwrite
             # fs.writeFile add(mobile_client_path, file), data
 
 toObject = (v) ->
@@ -343,7 +348,7 @@ toString = (v, d) ->
     if x.isEmpty data = toObject v.eco then str
     else eco.render str, toObject data
 
-read = (f, kind) -> 
+readExports = (f, kind) -> 
     x.func if index_basename is base = path.basename f, coffee_ext then (nocacheRequire f)[kind]
     else (updateRequire f)[base][kind]
 
@@ -351,7 +356,7 @@ build = () ->
     console.log new Date()
     init_settings()
     mkdir build_client_path
-    @Modules = coffee_paths().reduce ((o, f) -> x.extend o, read f, 'Modules'), {}
+    @Modules = coffee_paths().reduce ((o, f) -> x.extend o, readExports f, 'Modules'), {}
     x.keys(@Modules).map (name) -> x.module name, @Modules[name]
     x.keys(directives).map (d) -> 
         write_build (it = directives[d]).file, (x.func(it.header) || '') + 
@@ -380,29 +385,39 @@ github_file = (file) ->
     req.end()
     req.on 'error', (e) -> console.log 'problem with request: ' + e.message
 
+github_url = (id_slash_repo) -> 'https://github.com/' + (id_slash_repo or 'i4han/sat-init') + '.git'
+
 create = ->
     site = argv._[0]
     site.length > 0 or console.error "Can not create", site
     fs.mkdir site, (e) ->
         e and (console.log("Can not create", site, "\nAlready exists?") or process.exit 1)
-        cwd = process.cwd()
-        mkdir add (site_path = add cwd, site), sat_dir 
-        (meteor_command 'create', build_dir, site_path).on 'exit', ->
-            build_path = add cwd, site, build_dir
-            (meteor_packages_removed.reduce ((f, p) -> -> (meteor_command 'remove', p, build_path).on 'exit', f), ->
-                (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add', p, build_path).on 'exit', f), ->
-                    '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, build_dir + f), (e) -> error e 
-                    [index_coffee, '.gitignore'].forEach (f) -> github_file add site_path, f          
+        (spawn_command 'git', 'clone', [github_url(), '.'], site).on 'exit', (code) ->
+            code and (console.log('Git exited with error.') or process.exit 1)
+            mkdir add (site_path = process.cwd()), sat_dir 
+            (meteor_command 'create', build_dir, site_path).on 'exit', ->
+                build_path = add site_path, build_dir
+                (meteor_packages_removed.reduce ((f, p) -> -> (meteor_command 'remove', p, build_path).on 'exit', f), ->
+                    (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add', p, build_path).on 'exit', f), ->
+                        '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, build_dir + f), (e) -> error e 
+                        #[index_coffee, '.gitignore'].forEach (f) -> github_file add site_path, f          
+                    )()
                 )()
-            )()
 
-test = ->
-    console.log 'Arguments', argv
-version = ->
-    console.log 'sat version:', '0.4.1'
+run = ->
+    settings()
+    coffee_compile()
+    build()
+    #meteor_command 'run', ['--settings', settings_json, '--port', '3300'], test_path    
+    spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3000'], build_path
+
+test = -> console.log 'Arguments', argv
+version = -> console.log 'sat version:', '0.4.13'
+
 tasks =
     test:     call: (-> test()          ), description: 'test'
     create:   call: (-> create()        ), description: 'Create a project.'
+    run:      call: (-> run()           ), description: 'Run meteor server.'
     build:    call: (-> build()         ), description: 'Build meteor client files.'
     settings: call: (-> settings()      ), description: 'Settings'
     version:  call: (-> version()       ), description: 'Print version'
