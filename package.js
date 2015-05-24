@@ -8,12 +8,12 @@ Package.describe({
 Package.on_use( function (api) {
     api.use('jquery@1.0.1');
     api.use('iron:router@1.0.7');
-    api.add_files( 'js/settings.js',  ['client', 'server'] );
-    api.add_files( 'js/elements.js',  ['client', 'server'] );
-    api.add_files( 'js/x.js',         ['client', 'server'] );
-    api.add_files( 'js/x_client.js',   'client'            );
-    api.add_files( 'js/route.js',                'server'  );
-    api.add_files( 'js/satellite.js', ['client', 'server'] );
+    api.add_files( 'src/settings.js',  ['client', 'server'] );
+    api.add_files( 'js/elements.js',   ['client', 'server'] );
+    api.add_files( 'js/x.js',          ['client', 'server'] );
+    api.add_files( 'src/x_client.js',   'client'            );
+    api.add_files( 'js/route.js',                 'server'  );
+    api.add_files( 'js/satellite.js',  ['client', 'server'] );
 
     api.export( 'x',        ['client', 'server'] );    
     api.export( 'db',       ['client', 'server'] );

@@ -411,11 +411,14 @@ run = ->
     #meteor_command 'run', ['--settings', settings_json, '--port', '3300'], test_path    
     spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3000'], build_path
 
-test = -> console.log 'Arguments', argv
+test = -> 
+    'client server lib public private'.map (d) ->
+        fs.unlink link = add(test_path, d), ->
+            fs.symlink add(site_path, d), link, 'dir', -> console.log new Date(), link
 version = -> console.log 'sat version:', '0.4.13'
 
 tasks =
-    test:     call: (-> test()          ), description: 'test'
+    test:     call: (-> test()          ), description: 'Test environment.'
     create:   call: (-> create()        ), description: 'Create a project.'
     run:      call: (-> run()           ), description: 'Run meteor server.'
     build:    call: (-> build()         ), description: 'Build meteor client files.'
