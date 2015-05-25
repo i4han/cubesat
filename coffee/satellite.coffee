@@ -1,24 +1,23 @@
 
 
-collections = if (s = Meteor.settings) and s.public then x.toArray s.public.collections else []
+collections = if (s = Meteor.settings) and s.public then s.public.mongo else {}
 connected = []
 
-dbServer = (c) -> c.filter((c) -> ! c in connected).map (collection) ->
-    connected.push collection
-    db[collection] = new Meteor.Collection collection
-    db[collection].allow
+mongoServer = (mongo) -> x.keys(mongo).filter((c) -> c not in connected).map (k) ->
+    connected.push k
+    db[k] = new Meteor.Collection k
+    db[k].allow x.func(mongo[k].allow, mongo[k]) or
         insert: (doc) -> true
-        update: (userId, doc, fields, modifier) -> true 
-        remove: (userId, doc) -> true
-    db[collection].deny
-        update: (userId, doc, fields, modifier) -> false
+        update: (userId, doc, fields, modifier) -> false 
         remove: (userId, doc) -> false
-    Meteor.publish collection, -> db[collection].find {}
+    db[k].deny x.func(mongo[k].deny  , mongo[k]) or
+        remove: (userId, doc) -> true
+    Meteor.publish k, mongo[k].publish or -> db[k].find {}
 
-dbClient = (c) -> c.filter((c) -> ! c in connected).map (collection) ->
-    connected.push collection
-    db[collection] = new Meteor.Collection collection
-    Meteor.subscribe collection
+mongoClient = (mongo) -> x.keys(mongo).filter((c) -> c not in connected).map (k) ->
+    connected.push k
+    db[k] = new Meteor.Collection k
+    Meteor.subscribe k
 
 Meteor.startup ->
     Modules = x.func exports.Modules
@@ -26,18 +25,18 @@ Meteor.startup ->
         .map((file) -> x.extend Modules, x.func exports[file].Modules)
     x.keys(@Modules = Modules).map (n) -> x.module.call @, n, Modules[n]
     if Meteor.isServer
-        collections.length and dbServer collections
+        x.isEmpty(collections) or mongoServer collections
         x.keys(Modules).map (name) ->
             _ = x.func Modules[name], x.func Modules[name]
             _.methods     and Meteor.methods _.methods
-            _.collections and dbServer x.toArray _.collections
+            _.mongo       and mongoServer _.mongo
             _.onServerStartup and _.onServerStartup.call _
     else if Meteor.isClient
-        collections.length and dbClient collections
+        x.isEmpty(collections) or mongoClient collections
         Router.configure layoutTemplate: 'layout'
         x.keys(Modules).map (name) ->
             _ = x.func Modules[name], x.func Modules[name]
-            _.collections and dbClient x.toArray _.collections
+            _.mongo       and mongoClient _.mongo
             _.onStartup   and _.onStartup.call(_)
             _.router      and console.log('O') or Router.map -> @route name, x.extend _.router #, data: -> Session.set 'params', @params
             _.events      and Template[name].events x.tideEventKey x.func(_.events, _), _.id

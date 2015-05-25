@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.4.14",
+    "version": "0.4.20",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility",
     "main": "js/x.js",
@@ -10,7 +10,7 @@
     ],
     "bin": { "sat" : "./js/sat.js" }, 
     "scripts": {
-        "prepublish": "ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
+        "prepublish": "coffee -bc -o js coffee && ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "Isaac Han <isaac@hi16.ca>",

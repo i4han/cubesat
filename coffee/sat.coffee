@@ -39,6 +39,9 @@ while dir_list.pop()
     if fs.existsSync sat_path = add dir_list.join('/'), sat_dir
         break
 site_path = dir_list.join '/'
+if dir_list.length == 0 and command not in ['create', 'update', 'npm-publish', 'meteor-publish']
+    console.log 'No satellite directory.'
+    process.exit 0
 fs.existsSync(dotenv_path = add home,      '.env') and dotenv.config path:dotenv_path
 fs.existsSync(dotenv_path = add site_path, '.env') and dotenv.config path:dotenv_path
 build_path = add site_path, build_dir
@@ -46,7 +49,6 @@ index_coffee_path = add site_path, index_coffee
 env = (v) -> (_path = process.env[v]) and _path.replace /^~\//, home + '/'
 cubesat_path   = env('CUBESAT_PATH')  or add home, '.cubesat'
 settings_path  = env('SETTINGS_PATH') or add cubesat_path, 'settings.coffee'
-
 
 nocacheRequire = (f) -> delete require.cache[f] and require f
 loadSettings   = (f) -> (fs.existsSync(f) and x.func (nocacheRequire f).Settings) or {}
@@ -73,16 +75,17 @@ build_client_path    = add build_path, client_dir
 build_lib_path       = add build_path, lib_dir
 build_public_path    = add build_path, public_dir
 
-style_path  = env('STYLE_PATH') or add site_path, 'style'
+style_path   = add site_path, 'style' # where to use?
 
 lib_files    = x.toArray Settings.lib_files
 my_packages  = x.toArray Settings.packages
 public_files = x.toArray Settings.public_files
 if test_path = env('TEST_PATH') or Settings.test_path
-    test_client_path  = add test_path, client_dir
-    test_lib_path     = add test_path, lib_dir
-    test_public_path  = add test_path, public_dir
+    test_client_path   = add test_path, client_dir
+    test_lib_path      = add test_path, lib_dir
+    test_public_path   = add test_path, public_dir
     test_packages_path = add test_path, 'packages'
+    package_path       = add test_packages_path, 'isaac:cubesat'
     package_paths = my_packages.map (p) -> add test_packages_path, p
 
 coffee_paths = -> (fs.readdirSync site_path).filter((f) -> coffee_ext is path.extname f).map((f) -> add site_path, f)
@@ -151,7 +154,6 @@ coffee_watch = (c, js) -> spawn 'coffee', ['-o', js, '-wbc', c], stdio:'inherit'
 
 coffee_compile = ->
     mkdir build_lib_path
-    console.log 'coffee'
     coffee_dir = [site_path] 
     js_dir     = [build_lib_path]
     package_paths and package_paths.map (p) ->
@@ -178,7 +180,7 @@ meteor_update = ->
     cd site_meteor_path
     spawn 'meteor', ['update'], stdio:'inherit'
 
-meteor_publish = -> spawn 'meteor', ['publish'], stdio:'inherit'
+meteor_publish_command = -> spawn 'meteor', ['publish'], stdio:'inherit'
 meteor_command = (command, argument, path) -> 
     cd path
     console.log 'meteor', command, argument
@@ -259,9 +261,9 @@ settings = ->
     delete Settings.local
     console.log settings_json
     fs.writeFile settings_json, JSON.stringify(Settings, '', 4) + '\n', (e, data) -> 
-        console.log new Date(), 'Settings'
+        console.log new Date() + 'Settings'
 
-publish = ->
+_publish = ->
     version = {}
     updated_packages = nconf.get 'updated_packages'
     my_packages.map (v, i) ->
@@ -286,7 +288,7 @@ publish = ->
                     .filter((v, i, a) -> a.indexOf(v) == i).map (d) ->
                         console.log new Date, 'Publishing', d 
                         cd add test_packages_path, d
-                        meteor_publish()
+                        meteor_publish_command()
 
 
 coffee = (data) -> cs.compile '#!/usr/bin/env node\n' + data, bare:true
@@ -353,7 +355,7 @@ readExports = (f, kind) ->
     else (updateRequire f)[base][kind]
 
 build = () ->
-    console.log new Date()
+    console.log new Date() + 'build'
     init_settings()
     mkdir build_client_path
     @Modules = coffee_paths().reduce ((o, f) -> x.extend o, readExports f, 'Modules'), {}
@@ -394,28 +396,56 @@ create = ->
         e and (console.log("Can not create", site, "\nAlready exists?") or process.exit 1)
         (spawn_command 'git', 'clone', [github_url(), '.'], site).on 'exit', (code) ->
             code and (console.log('Git exited with error.') or process.exit 1)
-            mkdir add (site_path = process.cwd()), sat_dir 
+            mkdir add (site_path = process.cwd()), sat_dir
+            # if build_dir exist? meteor is created? 
             (meteor_command 'create', build_dir, site_path).on 'exit', ->
                 build_path = add site_path, build_dir
                 (meteor_packages_removed.reduce ((f, p) -> -> (meteor_command 'remove', p, build_path).on 'exit', f), ->
                     (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add', p, build_path).on 'exit', f), ->
-                        '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, build_dir + f), (e) -> error e 
-                        #[index_coffee, '.gitignore'].forEach (f) -> github_file add site_path, f          
+                        '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, build_dir + f), (e) -> error e          
                     )()
                 )()
+
+version_inc = (data, re) ->
+    data.match re
+    console.log 'verion:', version = RegExp.$2.split('.').map((w, j) -> if j == 2 then String +w + 1 else w).join '.'
+    data.replace re, "$1#{version}$3"
+
+readWrite = (file, func) ->
+    fs.readFile file, 'utf8', (e, data) ->
+        error(e) or fs.writeFile file, func data, 'utf8', (err) -> error(err) 
+
+publish = (file, re) ->
+    console.log('TEST_PATH is null') or process.exit 0 unless test_path
+    readWrite add(package_path, file), (data) -> version_inc data, re
+
+reTable = 
+    npm:    /("version"\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
+    meteor: /(version\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
+
+npm_publish = -> 
+    publish 'package.json', reTable.npm
+    spawn_command 'npm', 'publish', ['.'], package_path
+
+meteor_publish = ->
+    publish 'package.js',   reTable.meteor
+    spawn_command 'meteor', 'publish', [], package_path
 
 run = ->
     settings()
     coffee_compile()
     build()
-    #meteor_command 'run', ['--settings', settings_json, '--port', '3300'], test_path    
     spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3000'], build_path
 
-test = -> 
-    'client server lib public private'.map (d) ->
-        fs.unlink link = add(test_path, d), ->
-            fs.symlink add(site_path, d), link, 'dir', -> console.log new Date(), link
-version = -> console.log 'sat version:', '0.4.13'
+test = ->
+    console.log('$TEST_PATH is null') or process.exit 0 unless test_path
+    'client server lib public private'.split(' ').forEach (d) ->
+        fs.unlink target = add(test_path, d), ->
+            fs.existsSync(source = add build_path, d) and fs.symlink source, target, 'dir', -> 
+                console.log new Date(), source
+    spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3300'], test_path    
+
+version = -> console.log "version:", "0.4.18" 
 
 tasks =
     test:     call: (-> test()          ), description: 'Test environment.'
@@ -426,6 +456,8 @@ tasks =
     version:  call: (-> version()       ), description: 'Print version'
     publish:  call: (-> publish()       ), description: 'Publish Meteor packages.'
     coffee:   call: (-> coffee_compile()), description: 'Watching coffee files to complie.'
+    'npm-publish': call: (-> npm_publish() ), description: 'Publish cubesat to npm'
+    'meteor-publish': call: (-> meteor_publish() ), description: 'Publish cubesat to meteor'
 
 (task = tasks[command]) and task.call()
 task or x.keys(tasks).map (k) -> 

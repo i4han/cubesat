@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor in coffeescript.',
-    version: '0.4.2',
+    version: '0.4.6',
     documentation: null
 });
 
