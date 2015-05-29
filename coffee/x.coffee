@@ -311,7 +311,7 @@ x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.label = m.label or x.capitalize name
     m.block = m.block or 'x'
     m._id = (id) -> '#' + m.block + '-' + m.name + '-' + id
-    m.id = m.function and m.function.id or (id) ->
+    m.id = m.fn and m.fn.id or (id) ->
         if id.indexOf(' ') > -1 then id.split(' ').map (s) -> m._id s 
         else m._id id
         

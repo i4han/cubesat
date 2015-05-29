@@ -764,7 +764,7 @@ x.module = function(name, m) {
   m._id = function(id) {
     return '#' + m.block + '-' + m.name + '-' + id;
   };
-  return m.id = m["function"] && m["function"].id || function(id) {
+  return m.id = m.fn && m.fn.id || function(id) {
     if (id.indexOf(' ') > -1) {
       return id.split(' ').map(function(s) {
         return m._id(s);
