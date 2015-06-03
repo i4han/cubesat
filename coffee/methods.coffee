@@ -1,7 +1,7 @@
 
 if Meteor.isServer
     methods = {}
-    x.keys(Settings).map (k) -> x.isObject(Settings[k]) and x.keys(Settings[k]).map (l) ->
+    false and x.keys(Settings).map (k) -> x.isObject(Settings[k]) and x.keys(Settings[k]).map (l) ->
         Skl = Settings[k][l]
         x.isString(Skl.meteor_method) and methods[Skl.meteor_method] = (o) ->
             HTTP.call Skl.method, Skl.url, x.interpolateOO Skl.options, o

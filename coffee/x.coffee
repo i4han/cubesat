@@ -28,6 +28,9 @@ x.isValue  = (v) -> if 'string' == typeof v || 'number' == typeof v then v else 
 x.isArray  = (o) -> if '[object Array]'  == Object.prototype.toString.call(o) then true else false
 x.isObject = (o) -> if '[object Object]' == Object.prototype.toString.call(o) then true else false
 x.capitalize = (str) -> str[0].toUpperCase() + str[1..]
+valid =
+    name: /^[a-zA-Z0-9._-]+$/
+x.valid = (kind, v) -> valid[kind].test v
 x.toDash = (str) -> 
     str = str.replace /([A-Z])/g, ($1) -> '-' + $1.toLowerCase()
     str.replace /\$([0-9])/g, ($1) -> '-' + $1[1..]
@@ -296,7 +299,7 @@ x.tideValue = (obj) ->
                 (if k in NotPxDefaultProperties then '' else 'px')
             else ok
         o), {}
-
+"""
 class x.Module
     constructor: (name) ->
         @name = name
@@ -305,16 +308,18 @@ class x.Module
             '#' + window.Module[@name].block + '-' + @name + '-' + s
         else '#' + window.Module[@name].block + '-' + @name + '-' + str    
     _instance: (i) -> @instance = i
-
+"""
 x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.name  = name
     m.label = m.label or x.capitalize name
     m.block = m.block or 'x'
-    m._id = (id) -> '#' + m.block + '-' + m.name + '-' + id
-    m.id = m.fn and m.fn.id or (id) ->
-        if id.indexOf(' ') > -1 then id.split(' ').map (s) -> m._id s 
-        else m._id id
-        
+    (m.fn = x.func m.fn, m) and x.keys(m.fn).forEach (f) -> m[f] = m.fn[f] 
+    m.Id = m.fn and m.fn.Id or (id) ->
+        if id[0] is '#'
+            id = id[1..]
+            sharp =  '#' 
+        else sharp = ''
+        sharp + m.name + '-' + id      
 
 class x.Style
     constructor: (selector) ->

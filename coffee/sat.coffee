@@ -24,10 +24,6 @@ add  = path.join
 home = process.env.HOME
 cwd  = process.cwd()
 
-mongo_port = 27017
-mongo_url  = "mongodb://localhost:#{mongo_port}/meteor"
-# mongo_url in config
-
 build_dir      = 'build'
 index_basename = 'index' 
 coffee_ext     = '.coffee'
@@ -38,8 +34,7 @@ package_json   = 'package.json'
 findRoot = (d) ->
     dir_list = process.cwd().split('/').concat [true]
     while dir_list.pop()
-        if fs.existsSync add dir_list.join('/'), d
-            break
+        break if fs.existsSync add dir_list.join('/'), d
     dir_list.join '/'
 
 dot_sat     = '.sat'
@@ -50,15 +45,43 @@ cubesat_path     = findRoot dot_cubesat
 dot_cubesat_path = add cubesat_path or home, dot_cubesat
 node_modules     = findRoot('node_modules') or home
 
-if site_path is '' and command not in 'help create npm-update npm-publish npm-install meteor-publish'.split ' '
-    console.log 'fatal: Not a .sat working directory or its subdirectories.'
+tasks =
+    ok:       call: (-> ok()            ), dotsat: 0, test: 0, description: ''
+    test:     call: (-> test()          ), dotsat: 1, test: 0, description: 'Test environment.'
+    init:     call: (-> init()          ), dotsat: 0, test: 0, description: 'Init .cubesat.'
+    help:     call: (-> help()          ), dotsat: 0, test: 0, description: 'Help message.'
+    create:   call: (-> create()        ), dotsat: 0, test: 0, description: 'Create a project.' # --repo
+    run:      call: (-> run()           ), dotsat: 1, test: 0, description: 'Run meteor server.'
+    build:    call: (-> build()         ), dotsat: 1, test: 0, description: 'Build meteor client files.'
+    settings: call: (-> settings()      ), dotsat: 1, test: 0, description: 'Settings'
+    version:  call: (-> version()       ), dotsat: 0, test: 0, description: 'Print sat version'
+    publish:  call: (-> publish()       ), dotsat: 0, test: 0, description: 'Publish Meteor packages.'
+    coffee:   call: (-> coffee_compile()), dotsat: 1, test: 0, description: 'Watching coffee files to complie.'
+    'create-test':    call: (-> create_test()    ), dotsat: 0, test: 1, description: 'Create test directory.' 
+    'install-mobile': call: (-> install_mobile() ), dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' 
+    'npm-update':     call: (-> npm_update()     ), dotsat: 0, test: 1, description: 'Publish and install npm cubesat packages.'    
+    'npm-install':    call: (-> npm_install()    ), dotsat: 0, test: 0, description: 'Install cubesat npm package'
+    'npm-publish':    call: (-> npm_publish()    ), dotsat: 0, test: 1, description: 'Publish cubesat to npm'
+    'meteor-update':  call: (-> meteor_update()  ), dotsat: 1, test: 1, description: 'Publish and install meteor cubesat packages.'
+    'meteor-install': call: (-> meteor_install() ), dotsat: 1, test: 0, description: 'Install meteor cubesat packages.'
+    'meteor-publish': call: (-> meteor_publish() ), dotsat: 0, test: 1, description: 'Publish cubesat to meteor'
+
+options =
+    t: full: 'with-test', command: ['run', 'coffee', 'install-mobile'], description: 'Excute with test.'
+
+if site_path is '' and tasks[command]?.dotsat
+    console.log 'fatal: "sat' + command + '" must run in .sat working directory or its subdirectory.'
     process.exit 1
 [home, cubesat_path, dot_cubesat_path, site_path].forEach (_path) ->
     fs.existsSync(dotenv_path = add _path, '.env') and dotenv.config path:dotenv_path
 build_path        = add site_path, build_dir
 index_coffee_path = add site_path, index_coffee
 env  = (v) -> (_path = process.env[v]) and _path.replace /^~\//, home + '/'  # read process.env, no use
-test_path      = if fs.existsSync(test_path = add cubesat_path, 'test') then test_path else undefined
+test_dir = switch 
+    when with_test = argv['with-test'] and x.isString with_test then with_test 
+    when tasks[command]?.test and argv._[0] then argv._[0] 
+    else 'test'
+test_path  = if fs.existsSync(test_path = add cubesat_path, test_dir) then test_path else undefined
 
 nocacheRequire = (f) -> delete require.cache[f] and require f
 loadSettings   = (f) -> (fs.existsSync(f) and x.func (nocacheRequire f).Settings) or {}
@@ -76,9 +99,10 @@ init_settings = ->
     @Settings = Settings
 init_settings() # check if command, .sat and index_coffee
 
-lib_dir    = 'lib'
-client_dir = 'client'
-public_dir = 'public'
+lib_dir      = 'lib'
+client_dir   = 'client'
+public_dir   = 'public'
+packages_dir = 'packages'
 
 build_client_path    = add build_path, client_dir
 build_lib_path       = add build_path, lib_dir
@@ -90,11 +114,12 @@ cubesat_name = 'isaac:cubesat'
 lib_files    = x.toArray Settings.lib_files
 my_packages  = x.toArray Settings.packages
 public_files = x.toArray Settings.public_files
+
 if test_path
     test_client_path   = add test_path, client_dir
     test_lib_path      = add test_path, lib_dir
     test_public_path   = add test_path, public_dir
-    test_packages_path = add test_path, 'packages'
+    test_packages_path = add test_path, packages_dir
     cubesat_package_path   = add test_packages_path, cubesat_name
     package_paths = my_packages.map (p) -> add test_packages_path, p
 
@@ -128,8 +153,9 @@ rmdir = (dir, f) ->
     func(f)
     dir
 
-mkdir = (dir, f) -> 
-    dir and fs.readdir dir, (e, l) -> e and fs.mkdir dir, (e) -> e or (f and f())
+mkdir = (dir, _path, f) -> 
+    _path and process.chdir _path
+    dir and fs.readdir dir, (e, l) -> e and fs.mkdir dir, (e) -> e or x.isFunction(f) and f()
 
 compare_file = (source, target) -> false
 
@@ -143,14 +169,14 @@ cp = (source, target) ->
 cpdir = (source, target) ->
     fs.readdir source, (e, list) -> list.map (f) ->
         if  f.match /^\./ then ''
-        else if (fs.lstatSync _path = add source, f).isDirectory() then mkdir (t_f = add target, f), -> cpdir _path, t_f 
+        else if (fs.lstatSync _path = add source, f).isDirectory() then mkdir (t_f = add target, f), null, -> cpdir _path, t_f 
         else cp _path, add target, f
 
-clean_up = ->
+__clean_up = ->
     rmdir build_client_path 
     rmdir build_lib_path 
 
-daemon = ->
+__daemon = ->
     ps.lookup command: 'node',   psargs: 'ux', (e, a) -> 
         node_ps = a.map (p) -> (p.arguments?[0]?.match /\/(log\.io-[a-z]+)$/)?[1]
         'log.io-server'    in node_ps or spawn 'log.io-server',    [], stdio:'inherit'
@@ -179,36 +205,36 @@ meteor = (dir, port='3000') ->
     cd dir
     spawn 'meteor', ['--port', port, '--settings', settings_json], stdio:'inherit'
 
-stop_meteor = (func) ->
+__stop_meteor = (func) ->
     ps.lookup psargs: 'ux', (err, a) -> a.map (p, i) ->
         ['3000', '3300'].map (port) -> 
             if '--port' == p.arguments?[1] and port == p.arguments?[2]
                 process.kill p.pid, 'SIGKILL'
         a.length - 1 == i and func? and func()
 
-meteor_update = ->
+__meteor_update = ->
     cd site_meteor_path
     spawn 'meteor', ['update'], stdio:'inherit'
 
-meteor_publish_command = -> spawn 'meteor', ['publish'], stdio:'inherit'
-meteor_command = (command, argument, path) -> 
+__meteor_publish_command = -> spawn 'meteor', ['publish'], stdio:'inherit'
+__meteor_command = (command, argument, path) -> 
     cd path
     console.log 'meteor', command, argument
     spawn 'meteor', [command, argument], stdio:'inherit'
 
-spawn_command = (bin, command, args, path) -> 
-    path and cd path
+spawn_command = (bin, command, args, _path) -> 
+    _path and cd _path
     console.log bin, command, args.join ' '
     spawn bin, [command].concat(args), stdio:'inherit'
 
-start_meteor = ->
+__start_meteor = ->
     stop_meteor -> 
         meteor test_path, '3300'
         #meteor site_meteor_path
 
-hold_watch = (sec) -> updated = process.hrtime()[0] + sec
+__hold_watch = (sec) -> updated = process.hrtime()[0] + sec
 
-start_up = ->
+__start_up = ->
     coffee_alone()
     #chokidar.watch(settings_cson).on 'change', -> settings()
     #chokidar.watch(test_lib_path).on 'change', (d) -> buid() # cp d, add build_lib_path, path.basename d
@@ -223,7 +249,7 @@ start_up = ->
                 console.log new Date(), 'Changed', f
     commands()
 
-commands = ->
+__commands = ->
     rl = require('readline').createInterface process.stdin, process.stdout
     rl.setPrompt ''
     rl.on('line', (line) ->        
@@ -255,51 +281,12 @@ meteor_packages_removed = 'autopublish insecure'.split ' '
 meteor_packages = "service-configuration accounts-password fortawesome:fontawesome http iron:router #{cubesat_name} jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus".split ' '
 mobile_packages = [] #mobile meteor package
 
-_meteor_run_ios  = -> meteor_command 'run', 'ios', mobile_path
-_add_packages    = -> (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add',    p, mobile_path).on 'exit', f), meteor_run_ios)()
-_remove_packages = -> (meteor_packages_removed                .reduce ((f, p) -> -> (meteor_command 'remove', p, mobile_path).on 'exit', f), add_packages  )()
-_prepare_mobile  = ->
-    'client lib public resources'.split(' ')     .map (d) -> #ncp add(test_path, d), add mobile_path, d
-    'mobile.html mobile.css mobile.js'.split(' ').map (f) -> fs.unlink add(mobile_path, f), (e) -> error e
-    (['install-sdk', 'add-platform'].reduce ((f, c) -> -> (meteor_command c, 'ios', mobile_path).on 'exit', f), remove_packages)()
-
-to_be_removed_update_mobile = ->
-    rmdir mobile_path, -> (meteor_command 'create', mobile_path, work).on 'exit', prepare_mobile
-
-
 settings = ->
     init_settings()
     delete Settings.local
     console.log settings_json
     fs.writeFile settings_json, JSON.stringify(Settings, '', 4) + '\n', (e, data) -> 
-        console.log new Date() + 'Settings'
-
-to_be_removed_publish = ->
-    version = {}
-    updated_packages = nconf.get 'updated_packages'
-    my_packages.map (v, i) ->
-        package_dir = add test_packages_path, v
-        package_js  = add package_dir, package_js
-        isLast = my_packages.length - 1 == i
-        (true or isLast or -1 < updated_packages.indexOf(package_dir)) and fs.readFile package_js, 'utf8', (e, data) ->
-            data.match /version:\s*['"]([0-9.]+)['"]\s*,/m
-            version[v] = ((RegExp.$1.split '.').map (w, j) -> if j == 2 then String(Number(w) + 1) else w).join '.'
-            data = data.replace /(version:\s*['"])[0-9.]+(['"])/m, "$1#{version[v]}$2"
-            if ! isLast
-                hold_watch(1)
-                fs.writeFile package_js, data, 'utf8', (e) -> e and console.log new Date, e
-            else 
-                async.map x.keys(version), (p) -> # only async
-                    data = data.replace((new RegExp("api\.use\\('#{p}.+$", 'm')), "api.use('#{p}@#{version[p]}');")
-                hold_watch(1)
-                fs.writeFile package_js, data, 'utf8', (e) ->
-                    nconf.set 'updated_packages', []
-                    nconf.save()
-                    e or x.keys(version).concat([my_packages[my_packages.length - 1]])
-                    .filter((v, i, a) -> a.indexOf(v) == i).map (d) ->
-                        console.log new Date, 'Publishing', d 
-                        cd add test_packages_path, d
-                        meteor_publish_command()
+        console.log new Date() + ' Settings are written.'
 
 
 coffee = (data) -> cs.compile '#!/usr/bin/env node\n' + data, bare:true
@@ -366,16 +353,17 @@ readExports = (f, kind) ->
     else (updateRequire f)[base][kind]
 
 build = () ->
-    console.log new Date() + 'build'
+    settings()
+    spawn_command 'coffee', '-bc', ['-o', build_lib_path, site_path]
     init_settings()
     mkdir build_client_path
     @Modules = coffee_paths().reduce ((o, f) -> x.extend o, readExports f, 'Modules'), {}
-    x.keys(@Modules).map (name) -> x.module name, @Modules[name]
+    x.keys(@Modules).map (n) -> x.module n, @Modules[n] = x.func @Modules[n], x.func @Modules[n]
     x.keys(directives).map (d) -> 
         write_build (it = directives[d]).file, (x.func(it.header) || '') + 
             x.keys(@Modules).map((n) -> (b = toString(@Modules[n], d)) and it.f.call @, n, b).filter((o) -> o?).join ''
-    x.keys(@Modules).map((n, i) -> @Modules[n].absurd and api.add toTidy @Modules[n], 'absurd')
-        .concat([write_build 'absurd.css', api.compile()])        
+    x.keys(@Modules).map((n, i) -> @Modules[n].style and api.add toTidy @Modules[n], 'style')
+        .concat([write_build 'absurd.css', api.compile()])
 
 gitpass = ->
     prompt.message = 'github'
@@ -388,6 +376,7 @@ gitpass = ->
             """, flag: 'w+'
         Config.quit(process.exit 1)
 
+# fatal: error: warn: info:
 github_file = (file) ->
     req = https.request
         host: 'raw.githubusercontent.com', port: 443, method: 'GET'
@@ -398,24 +387,25 @@ github_file = (file) ->
     req.end()
     req.on 'error', (e) -> console.log 'problem with request: ' + e.message
 
-github_url = (id_slash_repo) -> 'https://github.com/' + (id_slash_repo or 'i4han/sat-init') + '.git'
+github_url = (repo) -> 'https://github.com/' + repo + '.git'
+
+meteor_create = (dir, fn) ->
+    (spawn_command 'meteor', 'create', [dir], site_path = process.cwd()).on 'exit', ->
+        build_path = add site_path, dir
+        (meteor_packages_removed.reduce ((f, p) -> -> (spawn_command 'meteor', 'remove', [p], build_path).on 'exit', f), ->
+            (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (spawn_command 'meteor', 'add', [p], build_path).on 'exit', f), ->
+                '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, dir + f), (e) -> error e
+                x.isFunction(fn) and fn()
+            )()
+        )()
 
 create = ->
-    site = argv._[0]
-    site.length > 0 or console.error "Can not create", site
+    x.valid('name', site = argv._[0]) or console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) or process.exit 1
     fs.mkdir site, (e) ->
-        e and (console.log("Can not create", site, "\nAlready exists?") or process.exit 1)
-        (spawn_command 'git', 'clone', [github_url(), '.'], site).on 'exit', (code) ->
-            code and (console.log('Git exited with error.') or process.exit 1)
-            mkdir add (site_path = process.cwd()), sat_dir
-            # if build_dir exist? meteor is created? 
-            (meteor_command 'create', build_dir, site_path).on 'exit', ->
-                build_path = add site_path, build_dir
-                (meteor_packages_removed.reduce ((f, p) -> -> (meteor_command 'remove', p, build_path).on 'exit', f), ->
-                    (meteor_packages.concat(mobile_packages).reduce ((f, p) -> -> (meteor_command 'add', p, build_path).on 'exit', f), ->
-                        '.html .css .js'.split(' ').map (f) -> fs.unlink add(build_path, build_dir + f), (e) -> error e          
-                    )()
-                )()
+        e and (console.error("error: Can not create", site) or process.exit 1)
+        (spawn_command 'git', 'clone', [github_url(argv.repo or 'i4han/sat-init'), '.'], site).on 'exit', (code) ->
+            code and (console.error('error: Git exited with an error.') or process.exit 1)
+            fs.existsSync('./build/.meteor') or meteor_create build_dir
 
 incVersion = (data, re) ->
     data.match re
@@ -428,7 +418,8 @@ readWrite = (file, func) ->
     fs.readFile file, 'utf8', (e, data) ->
         error(e) or fs.writeFile file, func data, 'utf8', (err) -> error(err) 
 
-publish = (file, re) ->
+
+_publish = (file, re) ->
     console.log('TEST_PATH is null') or process.exit 0 unless test_path
     readWrite add(cubesat_package_path, file), (data) -> incVersion data, re
 
@@ -437,11 +428,11 @@ rePublish =
     meteor: /(version\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
 
 npm_publish = -> 
-    publish package_json, rePublish.npm
+    _publish package_json, rePublish.npm
     spawn_command 'npm', 'publish', ['.'], cubesat_package_path
 
 meteor_publish = ->
-    publish package_js,   rePublish.meteor
+    _publish package_js,   rePublish.meteor
     spawn_command 'meteor', 'publish', [], cubesat_package_path
 
 meteor_install = ->
@@ -452,52 +443,48 @@ meteor_install = ->
 npm_install = -> 
     spawn_command 'npm', 'install', ['--prefix', node_modules, 'cubesat'], process.cwd()
 
-npm_update = -> npm_publish().on 'exit', (code) -> code or npm_install() 
+npm_update    = -> npm_publish()   .on 'exit', (code) -> code or npm_install() 
 meteor_update = -> meteor_publish().on 'exit', (code) -> code or meteor_install() 
 
+_meteor_run = (dir, port) ->     
+    spawn_command 'meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port or '3000']), dir or build_path
+
+coffee_watch = (c, js) -> spawn 'coffee', ['-o', js, '-wbc', c], stdio:'inherit'
+
+
 run = ->
-    settings()
-    coffee_compile()
     build()
-    spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3000'], build_path
+    _meteor_run()
     argv['with-test'] and test()
 
 test = ->
-    console.log('$TEST_PATH is null') or process.exit 0 unless test_path
+    build()
+    test_path or console.error('error: Can not find cubesat home.') or process.exit 1
     'client server lib public private'.split(' ').forEach (d) ->
         fs.unlink target = add(test_path, d), ->
-            fs.existsSync(source = add build_path, d) and fs.symlink source, target, 'dir', -> 
-                console.log new Date(), source
-    spawn_command 'meteor', 'run', ['--settings', settings_json, '--port', '3300'], test_path    
+            fs.existsSync(source = add build_path, d) and fs.symlink source, target, 'dir', -> console.log new Date(), source
+    _meteor_run test_path, '3300'
 
-version = -> console.log 'version: 0.4.31' 
+create_test = ->
+    (test_path = argv._[0]) or console.error("error: Test directory name is missing.") or process.exit 1
+    if fs.existsSync(test_path)
+        console.error "error: Directory already exist." 
+    else 
+        meteor_create test_path, -> mkdir packages_dir, null, -> mkdir cubesat_name, packages_dir, ->
+            (spawn_command 'git', 'clone', [github_url('i4han/cubesat'), '.'], cubesat_name).on 'exit', ->
+                console.info "info: cubesat package directory:", process.cwd()
 
+_install_mobile = (dir, fn) ->
+    (['install-sdk', 'add-platform'].reduce ((f, c) -> -> (spawn_command 'meteor', c, ['ios'], dir).on 'exit', f), fn)()
 
-help = ->
-    x.keys(tasks).map (k) -> 
-        console.log '  ', (k + Array(15).join ' ')[..15], tasks[k].description
+install_mobile = ->
+    ! site_path and ! ((wt = argv['with-test']) and test_path) and console.error "error: Run in .sat working directory or specify valid test name." or process.exit 1
+    _install_mobile (if wt then test_path else build_path), -> console.log new Date()
 
-init = -> ''
-    # Create .cubesat $CUBESAT_PATH or ~/.cubesat 
-    # Needs?
-
-tasks =
-    test:     call: (-> test()          ), description: 'Test environment.'
-    init:     call: (-> init()          ), description: 'Init .cubesat.'
-    help:     call: (-> help()          ), description: 'Help message.'
-    create:   call: (-> create()        ), description: 'Create a project.'
-    run:      call: (-> run()           ), description: 'Run meteor server.'
-    build:    call: (-> build()         ), description: 'Build meteor client files.'
-    settings: call: (-> settings()      ), description: 'Settings'
-    version:  call: (-> version()       ), description: 'Print version'
-    publish:  call: (-> publish()       ), description: 'Publish Meteor packages.'
-    coffee:   call: (-> coffee_compile()), description: 'Watching coffee files to complie.'
-    'npm-update':     call: (-> npm_update()     ), description: 'Publish and install npm cubesat packages.'    
-    'npm-install':    call: (-> npm_install()    ), description: 'Install cubesat npm package'
-    'npm-publish':    call: (-> npm_publish()    ), description: 'Publish cubesat to npm'
-    'meteor-update':  call: (-> meteor_update()  ), description: 'Publish and install meteor cubesat packages.'
-    'meteor-install': call: (-> meteor_install() ), description: 'Install meteor cubesat packages.'
-    'meteor-publish': call: (-> meteor_publish() ), description: 'Publish cubesat to meteor'
+version = -> console.log 'version: ' + getVersion add(node_modules, 'node_modules', 'cubesat', 'package.json'), rePublish.npm
+help = -> x.keys(tasks).map (k) -> console.log '  ', (k + Array(15).join ' ')[..15], tasks[k].description
+init = -> ''# Create .cubesat $CUBESAT_PATH or ~/.cubesat. Do we NEED this?
+ok   = -> console.log argv
 
 
 (task = tasks[command]) and task.call()

@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor in coffeescript.',
-    version: '0.4.9',
+    version: '0.4.19',
     documentation: null
 });
 
@@ -9,8 +9,8 @@ Package.on_use( function (api) {
     api.use('jquery@1.0.1');
     api.use('iron:router@1.0.7');
     api.add_files( 'src/settings.js',  ['client', 'server'] );
+    api.add_files( 'js/x.js',          ['client', 'server'] );    
     api.add_files( 'js/elements.js',   ['client', 'server'] );
-    api.add_files( 'js/x.js',          ['client', 'server'] );
     api.add_files( 'src/x_client.js',   'client'            );
     api.add_files( 'js/route.js',                 'server'  );
     api.add_files( 'js/satellite.js',  ['client', 'server'] );
