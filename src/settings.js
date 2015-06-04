@@ -3,7 +3,7 @@ x        = {$:{}};
 db       = {};
 Modules  = {};
 exports  = {};
-Settings = Meteor.settings;
+Settings = Meteor.settings ? Meteor.settings : {}
 
 if (Meteor.isServer) {
 } else if (Meteor.isClient) {

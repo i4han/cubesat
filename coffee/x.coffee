@@ -262,13 +262,13 @@ NotPxDefaultProperties = 'zIndex fontWeight'.split ' '
 
 
 tideKey = (key, fid, seperator) ->
-    key = (key.replace r, (m, $1) -> fid $1) while (r=new RegExp /#\[([a-z_]+[0-9]+)\]/).test key
+    key = (key.replace r, (m, $1) -> fid $1) while (r=new RegExp /\[(#?[a-z_]+[0-9]+)\]/).test key
     return key if (not /^[a-zA-Z0-9_$]+$/.test key) or (not /[0-9_$]+/.test key)
     key.split('_').map((a, i) -> switch 
         when ''  == a    then undefined
         when '$' == a[0] then '#' + x.toDash a[1..]
         when /^h[1-6]$/.test a        then a 
-        when /^[a-z_]+[0-9]+$/.test a then fid a
+        when /^[a-z_]+[0-9]+$/.test a then '#' + fid a
         when 0 == i  then a
         else '.' + x.toDash a
     ).filter((f) -> f).join seperator
@@ -283,7 +283,7 @@ x.tideKey = (obj, fid, seperator) ->
 
 
 tideEventKey = (key, fid) ->
-    key = (key.replace r, (m, $1, $2, $3) -> $1+fid($2)+$3) while (r=new RegExp /(\s+)#\[([a-z_]+[0-9]+)\](,|\s+|$)/).test key
+    key = (key.replace r, (m, $1, $2, $3) -> $1+fid($2)+$3) while (r=new RegExp /(\s+)\[(#[a-z_]+[0-9]+)\](,|\s+|$)/).test key
     key
 
 x.tideEventKey = (obj, fid) ->
@@ -309,12 +309,14 @@ class x.Module
         else '#' + window.Module[@name].block + '-' + @name + '-' + str    
     _instance: (i) -> @instance = i
 """
+x.f =
+    id: 'Id'
 x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.name  = name
     m.label = m.label or x.capitalize name
     m.block = m.block or 'x'
     (m.fn = x.func m.fn, m) and x.keys(m.fn).forEach (f) -> m[f] = m.fn[f] 
-    m.Id = m.fn and m.fn.Id or (id) ->
+    m[x.f.id] = m.fn and m.fn[x.f.id] or (id) ->
         if id[0] is '#'
             id = id[1..]
             sharp =  '#' 

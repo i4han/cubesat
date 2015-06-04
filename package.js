@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor in coffeescript.',
-    version: '0.4.19',
+    version: '0.4.22',
     documentation: null
 });
 
@@ -20,4 +20,8 @@ Package.on_use( function (api) {
     api.export( 'Settings', ['client', 'server'] );
     api.export( 'Modules',  ['client', 'server'] );
     api.export( 'exports',  ['client', 'server'] );
+});
+
+Cordova.depends({
+    "org.apache.cordova.camera": "0.3.0"
 });

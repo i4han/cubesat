@@ -155,8 +155,6 @@ x.gmapInit = function (options) {
 // jquery.touch.js
 //
 
-console.log(Package.jquery.jQuery);
-console.log(jQuery);
 
 (function ($) {
 

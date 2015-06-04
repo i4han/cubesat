@@ -39,10 +39,10 @@ Meteor.startup ->
             _.collections and mongoClient x.func(_.collections, _), _
             _.onStartup   and _.onStartup.call _
             _.router      and Router.map -> @route n, x.extend _.router #, data: -> Session.set 'params', @params
-            _.events      and Template[n].events x.tideEventKey x.func(_.events, _), _.Id
+            _.events      and Template[n].events x.tideEventKey x.func(_.events, _), _[x.f.id]
             _.helpers     and Template[n].helpers x.func _.helpers, _  # @data context
             _.on$Ready    and $ ($) -> _.on$Ready.call _
-            #_.onDeviceReady and document.addEventListener 'deviceready', -> _.onDeviceReady.call _
+            _.onDeviceReady and document.addEventListener 'deviceready', _.onDeviceReady
             ('onCreated onRendered onDestroyed'.split ' ').forEach (d) -> 
                 _[d] and Template[n][d] -> _[d].call _
         $ ($) -> 
