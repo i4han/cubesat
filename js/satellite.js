@@ -82,10 +82,11 @@ Meteor.startup(function() {
     x.keys(Modules).map(function(n) {
       var _;
 
+      console.log(n);
       _ = x.func(Modules[n], x.func(Modules[n]));
       _.collections && mongoClient(x.func(_.collections, _), _);
       _.onStartup && _.onStartup.call(_);
-      _.router && Router.map(function() {
+      _.router && console.log(n) || Router.map(function() {
         return this.route(n, x.extend(_.router));
       });
       _.events && Template[n].events(x.tideEventKey(x.func(_.events, _), _[x.f.id]));

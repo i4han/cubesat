@@ -89,7 +89,7 @@ test_dir = switch
 test_path  = if fs.existsSync(test_path = add cubesat_path, test_dir) then test_path else undefined
 
 nocacheRequire = (f) -> delete require.cache[f] and require f
-loadSettings   = (f) -> (fs.existsSync(f) and x.func (nocacheRequire f).Settings) or {}
+loadSettings   = (f) -> (fs.existsSync(f) and x.func s = (nocacheRequire f).Settings, x.func s) or {}
 Settings = loadSettings settings_path = add dot_cubesat_path, 'settings.coffee'
 (f = (o) -> x.keys(o).forEach (k) -> if x.isObject o[k] then o[k] = f o[k] else o[k] = x.func o[k])(Settings)
 settings_json =  add build_path,   'settings.json'
@@ -97,9 +97,17 @@ nconf.file file: add dot_sat_path, 'config.json'
 
 @Theme = @Modules = {}
 
+func2val = (f, _) -> 
+    if x.isObject f
+        x.keys(f).forEach (k) -> f[k] = func2val f[k], _
+        f
+    else if x.isFunction f then x.func f, _ 
+    else f
+
 init_settings = ->
     Settings = loadSettings settings_path
     x.extend Settings, loadSettings index_coffee_path
+    func2val Settings, Settings
     (site = Settings.site) and (local = Settings.local) and local[site] and x.extend Settings, local[site]
     @Settings = Settings
 init_settings() # check if command, .sat and index_coffee

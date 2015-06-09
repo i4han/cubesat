@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.4.59",
+    "version": "0.4.60",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility",
     "main": "js/x.js",
@@ -28,7 +28,9 @@
         "nconf": "*",
         "absurd": "*",
         "dotenv": "*",
-        "minimist": "*"
+        "minimist": "*",
+        "busboy": "*",
+        "cloudinary": "*"
     },
     "repository": "https://github.com/i4han/cubesat.git",
     "author": "Isaac Han <isaac@hi16.ca>",

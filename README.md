@@ -1,70 +1,70 @@
 #Cubesat
 Web app development framework for Meteor.
 
+##Not Ready
+Do not use this package yet unless you really want to try it. 
+It is under rapid development and unstable.
+
 ##Installation
     
-    curl https://install.meteor.com | sh 
-    npm install -g coffee-script
     npm install -g cubesat
+    npm install cubesat
     
 ##Dependency
-Nodejs, Meteor and coffee script
+Meteor 1.0 and coffee script 1.8
+Lower version of coffee script may be ok.
 
 ##Example
-sat create myapp
-cd myapp
-sat run
+
+     
+    sat create myapp
+    cd myapp
+    sat run
+     
 
 ##Envirinment Variables
-###CUBESAT_PATH
-If not set HOME/.cubesat is default.
-###SETTINGS_PATH
-If not set $CUBESAT_PATH/settings.coffee is default.
-###.env
 
 ##Structure
 ###Exports
 ####Settings
 ####Modules
-####Parts
 ####Theme
 ####Layout
 
 ##Files and directories
     ~
         .env                        # dotenv, the first.
-        .cubesat                    # $CUBESAT_PATH
-            test            
-                client
-                lib
-                server
-                packages
-                    isaac:cubesat   # git:https://github.com/i4han/cubesat.git
-                        .git
+        .cubesat                    # 
             settings.coffee         # $SETTINGS_PATH global settings.
-        projects
-            myapp
-                .env                # dotenv, the second, overwrite the first variables.
-                .git
-                .gitignore
-                .sat
-                    config.json
-                build
-                    client
-                        0.jade
-                        1.jade
-                        absurd.css
-                    lib
-                        index.js
-                index.coffee        # exports.Modules, exports.Settings
+        myapp
+            .env                    # dotenv, the second, overwrite the first variables.
+            .git
+            .gitignore
+            .sat
+                config.json         # not yet used.
+            build
+                client
+                    0.jade
+                    1.jade
+                    absurd.css
+                lib
+                    index.js
+            index.coffee            # exports.Modules, exports.Settings
+        test            
+            client                  # symbolic link
+            lib                     # symbolic link
+            server                  # symbolic link
+            packages
+                isaac:cubesat       # git:https://github.com/i4han/cubesat.git
+                    .git
     
 
 ##Issues
 
-dotenv: ask stu
-coffee script binary link has not created on codio.
+* [ ] connect with facebook
+    * [ ] Deploy to meteor.com
+        * [ ] Npm.require Npm.depends don't work.
 
-    npm install -g coffee-script 
 
 ##Resources
 - meteor

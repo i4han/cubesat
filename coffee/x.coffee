@@ -309,8 +309,8 @@ class x.Module
         else '#' + window.Module[@name].block + '-' + @name + '-' + str    
     _instance: (i) -> @instance = i
 """
-x.f =
-    id: 'Id'
+x.f = id: 'Id'
+
 x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.name  = name
     m.label = m.label or x.capitalize name

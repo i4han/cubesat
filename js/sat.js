@@ -314,7 +314,9 @@ nocacheRequire = function(f) {
 };
 
 loadSettings = function(f) {
-  return (fs.existsSync(f) && x.func((nocacheRequire(f)).Settings)) || {};
+  var s;
+
+  return (fs.existsSync(f) && x.func(s = (nocacheRequire(f)).Settings, x.func(s))) || {};
 };
 
 Settings = loadSettings(settings_path = add(dot_cubesat_path, 'settings.coffee'));

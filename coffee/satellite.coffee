@@ -1,4 +1,5 @@
 
+console.log Npm.require 'busboy'
 
 collections = if (s = Meteor.settings) and s.public then s.public.collections else {}
 mongo = connected:[]
@@ -35,10 +36,11 @@ Meteor.startup ->
         x.isEmpty(collections) or mongoClient collections
         Router.configure layoutTemplate: 'layout'
         x.keys(Modules).map (n) ->
+            console.log n
             _ = x.func Modules[n], x.func Modules[n]
             _.collections and mongoClient x.func(_.collections, _), _
             _.onStartup   and _.onStartup.call _
-            _.router      and Router.map -> @route n, x.extend _.router #, data: -> Session.set 'params', @params
+            _.router      and console.log(n) or Router.map -> @route n, x.extend _.router #, data: -> Session.set 'params', @params
             _.events      and Template[n].events x.tideEventKey x.func(_.events, _), _[x.f.id]
             _.helpers     and Template[n].helpers x.func _.helpers, _  # @data context
             _.on$Ready    and $ ($) -> _.on$Ready.call _
