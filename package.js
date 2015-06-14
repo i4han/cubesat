@@ -1,9 +1,9 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor in coffeescript.',
-    version: '0.4.29',
+    version: '0.4.39',
     git: 'https://github.com/i4han/cubesat.git',
-    documentation: null
+    documentation: 'README.md'
 });
 
 Package.on_use( function (api) {
@@ -24,7 +24,8 @@ Package.on_use( function (api) {
 });
 
 Npm.depends({
-    busboy: '0.2.9'
+    busboy:     "0.2.9",
+    cloudinary: "1.2.1"
 });
 
 Cordova.depends({

@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.4.60",
+    "version": "0.4.68",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility",
     "main": "js/x.js",
@@ -8,7 +8,7 @@
         "js/x.js",
         "js/sat.js"
     ],
-    "bin": { "sat" : "./js/sat.js" }, 
+    "bin": { "sat": "./js/sat.js" }, 
     "scripts": {
         "prepublish": "coffee -bc -o js coffee && ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
         "test": "echo \"Error: no test specified\" && exit 1"
@@ -32,7 +32,9 @@
         "busboy": "*",
         "cloudinary": "*"
     },
-    "repository": "https://github.com/i4han/cubesat.git",
-    "author": "Isaac Han <isaac@hi16.ca>",
+    "repository": { 
+        "type": "git",
+        "url": "https://github.com/i4han/cubesat.git" 
+    },
     "license": "GPL-2.0 for non-commercial"
 }
