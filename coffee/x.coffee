@@ -28,6 +28,7 @@ x.isEmpty = (obj) -> switch
 x.isVisible = (v) -> if 'function' == typeof v then v() else if false is v then false else true
 x.timeout = (time, func) -> Meteor.setTimeout func, time
 
+x.reduce     = (a,   o, f) -> a.reduce f, o
 x.reduceKeys = (obj, o, f) -> x.keys(obj).reduce(f, o)
 
 x.__isPortableKey = (v) -> /^[a-z]+$/i.test v  # . or '#' # remove this.
@@ -37,7 +38,7 @@ x.__isValue  = (v) -> if x.isScalar v then v else false  # deprecated.
 valid =
     name: /^[a-zA-Z0-9._-]+$/
     email: /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i
-
+    attribute: /^[a-zA-Z]+$/
 x.valid = (kind, v) -> valid[kind].test v
 
 
@@ -69,7 +70,11 @@ x.__interpolateOO = (options, data) ->
 
 x.return = (func, _this_) -> if x.isFunction func then func.call _this_ else func
 
-x.assign = (object, properties) -> object[key] = val for key, val of properties; object # o1, o2, o3 has not implemented.
+x.__assign = (obj, properties) -> obj[key] = val for key, val of properties; obj # o1, o2, o3 has not implemented.
+x.assign = (obj) ->  
+    (args = [].slice.call arguments).length > 1 and args[1..].forEach (o) -> obj[k] = v for k, v of o
+    obj
+
 x.extend = x.assign                 # deprecated.
 x.remove = (obj, key) -> delete obj[key] ; obj
 x.object = (obj) ->  # implemented ([[k1, v1], [k2, v2], [k3, v3]]) but not ([k1, k2, k3], [v1, v2, v3])
@@ -314,7 +319,7 @@ class x.Module
         else '#' + window.Module[@name].block + '-' + @name + '-' + str    
     _instance: (i) -> @instance = i
 """
-localTags = (f, m) ->
+__localTags = (f, m) ->
     (tags = f.toString().match /(this\.H[1-6]|this\.[A-Z]+)[^\w]/g) and 
     tags.map((tag) -> tag.match(/[A-Z]+[1-6]?/)[0]).forEach (tag) ->  m[tag] = global[tag].bind(m)
 
@@ -326,7 +331,9 @@ x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.block = m.block or 'x'
     (m.fn = x.return m.fn, m) and x.keys(m.fn).forEach (f) -> m[f] = m.fn[f] 
     m[x.f.id] = m.fn and m.fn[x.f.id] or (id) -> if id[0] is '#' then '#' + name + '-' + id[1..] else name + '-' + id
-    m.template and localTags m.template, m
+    #m.template and localTags m.template, m
+
+x.isModule = (m) -> x.isObject(m) and x.f.id of m and 'label' of m
 
 class x.Style
     constructor: (selector) ->

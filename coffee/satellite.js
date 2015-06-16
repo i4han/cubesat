@@ -72,7 +72,7 @@ Meteor.startup(function() {
       _ = x["return"](Modules[n], x["return"](Modules[n]));
       _.methods && Meteor.methods(x["return"](_.methods, _));
       _.collections && mongoServer(x["return"](_.collections, _), _);
-      return _.onServerStartup && _.onServerStartup.call(_);
+      return _.onServer && _.onServer.call(_);
     });
   } else if (Meteor.isClient) {
     x.isEmpty(collections) || mongoClient(collections);
@@ -82,13 +82,12 @@ Meteor.startup(function() {
     x.keys(Modules).map(function(n) {
       var _;
 
-      console.log(n);
       _ = x["return"](Modules[n], x["return"](Modules[n]));
       _.collections && mongoClient(x["return"](_.collections, _), _);
       _.onStartup && _.onStartup.call(_);
-      _.router && console.log(n) || Router.map(function() {
-        return this.route(n, x.assign(_.router));
-      });
+      _.path && Router.route(n, x["return"]({
+        path: _.path
+      }));
       _.events && Template[n].events(x.tideEventKey(x["return"](_.events, _), _[x.f.id]));
       _.helpers && Template[n].helpers(x["return"](_.helpers, _));
       _.on$Ready && $(function($) {

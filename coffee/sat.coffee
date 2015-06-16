@@ -24,9 +24,9 @@ home = process.env.HOME
 cwd  = process.cwd()
 
 build_dir      = 'build'
-index_basename = 'index' 
+_index_        = 'index' 
 coffee_ext     = '.coffee'
-index_coffee   = index_basename + coffee_ext
+index_coffee   = _index_ + coffee_ext
 package_js     = 'package.js'
 package_json   = 'package.json'
 
@@ -97,7 +97,7 @@ Settings = loadSettings settings_path = add dot_cubesat_path, 'settings.coffee'
 settings_json =  add build_path,   'settings.json'
 nconf.file file: add dot_sat_path, 'config.json'
 
-@Theme = @Modules = {}
+@Theme = @Modules = Parts = {}
 
 func2val = (f, _) -> 
    if x.isObject f
@@ -275,7 +275,9 @@ fixup = (v) -> switch
    when x.isString v then ((o = {})[v] = '') or o
    when x.isFunction v then (if x.isScalar(r = x.return v, @) then r else fixup.call @, r)
    when x.isArray  v then v.reduce ((o, w) -> x.assign o, fixup.call @, w), {}
-   when x.isObject v then x.reduceKeys v, {}, (o, k) -> x.object o, k, (if x.isScalar(r = v[k]) then r else fixup.call @, r)
+   when x.isObject v then x.reduceKeys v, {}, (o, k) ->
+      if Parts and k of Parts then x.assign o, fixup.call @, Parts[k] v[k]
+      else x.object o, k, (if x.isScalar(r = v[k]) then r else fixup.call @, r)
 
 seperators = 
    jade:  ''
@@ -285,36 +287,49 @@ baseUnits =
    zIndex:     ''
    fontWeight: ''
 
+newTab = '_'
+
 cssDefaults = (obj) ->
    return obj unless x.isObject obj
-   x.keys(obj).forEach (o, k) -> o[k] = switch
-      when 0 == ok then '0'
-      when x.isObject(ok = obj[k]) then cssDefaults ok
+   x.keys(obj).forEach (k) -> obj[k] = switch
+      when 0 is ok = obj[k] then '0'
+      when x.isObject ok then cssDefaults ok
       when x.isNumber ok then String(ok) + (if k of baseUnits then baseUnits[k] else 'px')
       else ok
+   obj
 
-isId    = (str) -> /^[a-z]+[0-9]+$/.test(str) and ! /^h[1-6]$/.test str
-isClass = (str) -> /^_[a-z]+[a-zA-Z0-9$]*$/.test str
-isIdClass = (str) -> /^[a-zA-Z0-9_$]+$/.test(str) and /_/.test str
+isId        = (str) -> /^[a-z]+[0-9]+$/.test(str) and ! /^h[1-6]$/.test str
+isClass     = (str) -> /^_[a-z]+[a-zA-Z0-9$]*$/.test str
+isIdClass   = (str) -> /^[a-zA-Z0-9_$]+$/.test(str) and /_/.test str
+isIdOrClass = (str) -> isId(str) or isClass(str) or isIdClass str
+
+key2class = (k) -> x.dasherize k[1..]
+key2id = (_this_, k) -> _this_[x.f.id] k
 
 idClassKey = (key, s='') ->
-   key = (key.replace r, (m, $1) => @[x.f.id] $1) while (r=new RegExp /\[(#?[a-z_]+[0-9]+)\]/).test key
+   (key = key.replace r, (m, $1) => key2id @, $1) while (r=new RegExp /\[(#?[a-z]+[0-9]+)\]/).test key
    switch
-      when isId key    then ['#' + @[x.f.id] key]
-      when isClass key then ['.' + x.dasherize key[1..]]
+      when isId key    then ['#' + key2id @, key]
+      when isClass key then ['.' + key2class key]
       when isIdClass key then key.split('_').map((a, i) => switch
-         when '' is a   then null
-         when isId a    then '#' + @[x.f.id] a
-         when isClass '_' + a then '.' + x.dasherize a
-         else console.error 'Unknown ID or class:', a
-      ).filter((f) -> f).join s
+            when '' is a   then null
+            when isId a    then '#' + key2id @, a
+            when isClass '_' + a then '.' + key2class a
+            else console.error 'Unknown ID or class:', a
+         ).filter((f) -> f).join s
+      else key
+
+styleMediaQuery = (k) -> k
+
+styleKey = (obj) -> x.reduceKeys obj, {}, (o, k) => switch
+   when k[0] is '@' then x.object o, styleMediaQuery(k), styleKey.call @, obj[k]
+   when k of Parts then x.assign o, Parts[k] obj[k]
+   when k isnt idk = idClassKey.call(@, k) then x.object o, idk, obj[k]
+   else x.object o, k, obj[k]
 
 
-styleKey = (obj) ->
-   x.reduceKeys obj, {}, (o, k) =>
-      x.object o, idClassKey.call(@, k, ' '), if x.isObject ok = obj[k] then styleKey.call @, ok else ok
-
-toStyle = (d) -> cssDefaults styleKey.call @, fixup.call(@, @[d])
+toStyle = (d) -> cssDefaults x.reduceKeys (obj = fixup.call @, @[d]), {}, (o, k) =>
+   x.object o, idClassKey.call(@, k, ' '),  styleKey.call @, obj[k]
 
 indentStyle = (obj, depth=1) ->
    return obj unless x.isObject obj 
@@ -325,8 +340,6 @@ indentStyle = (obj, depth=1) ->
 parseValue = (str) -> 
    return str unless x.isString str
    str.replace(/(^|[^{])\{([^{}]+)\}($|[^}])/g, (m, $1, $2, $3) ->  $1 + '{{' + $2 + '}}' + $3 ) # double quote?
-
-key2class = (k) -> x.dasherize k[1..]
 
 attributeClass = (key, value) ->
    if value then (value.split ' ').reverse().map((k) -> k and key2class(key) + '-' +  k).concat(key[1..]).reverse().filter((v) -> v).join ' '
@@ -340,82 +353,84 @@ setAttribute = (o, attr, value) -> x.object o, attr, value
 attributeParse = (obj) ->
    x.keys(p = x.reduceKeys obj, {}, (o, k) -> switch
       when isClass k    then addAttribute o, 'class', attributeClass k, obj[k]
-      when 'id' is k and isId(obj[k]) and x.f.id of @ then setAttribute o, k, @[x.f.id] obj[k]
+      when 'id' is k and isId(obj[k]) and x.isModule(@) then setAttribute o, k, key2id @, obj[k]
       when k is 'class' then addAttribute o, 'class', obj[k]
       else setAttribute o, k, obj[k]
    ).map((k) ->  k + '="' + parseValue(p[k]) + '"').join(' ')
 
 attributeBracket = (obj) ->
-   delete (o = x.assign {}, obj).$
+   delete (o = x.assign {}, obj)[newTab]
    if x.isEmpty(o) then '' else '(' + attributeParse.call(@, o) + ')'
 
 codeLine = (o, tag, obj) -> 
    isClass(_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', key2class _class), obj[_class]), _class
-   x.object o, tag + attributeBracket.call(@, obj), if '$' of obj then parseValue obj['$'] else ''
+   x.object o, tag + attributeBracket.call(@, obj), if newTab of obj then parseValue obj[newTab] else ''
 
-attributes = 'id class style src height width href size name'.split ' '
-isAttribute = (obj) -> x.isObject(obj) and x.keys(obj)[0] in attributes
+htmlAttributes = 'id class style src height width href size name'.split ' '
+isHtmlAttribute = (obj) -> x.isObject(obj) and x.keys(obj)[0] in htmlAttributes
 
 tagLine = (tag, obj) -> switch
-   when x.isString obj  then codeLine.call @, {}, tag, $: parseValue obj
+   when x.isString obj  then codeLine.call @, {}, tag, x.object {}, newTab, parseValue obj
    when x.isNumber obj  then console.error 'NUMBER?'
    when x.isArray obj   then console.error 'ARRAY?'
-   when isAttribute obj then codeLine.call @, {}, tag, obj
-   when isClass _class = (x.keys obj)[0] then  codeLine.call @, {}, tag, obj
-   when isId (keys = x.keys obj)[0] 
-      keys.reduce ((o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', @[x.f.id] v), {}
-   else x.object {}, tag, obj
+   when x.valid('attribute', k = (keys = x.keys obj)[0]) or isClass k then codeLine.call @, {}, tag, obj
+   when isId k then keys.reduce ((o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', key2id @, v), {}
+   else console.err 'Unknown', tag, obj #x.object {}, tag, obj
 
 htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
-htmlTags.forEach (tag) ->  global[tag.toUpperCase()] = -> tagLine.call @, tag, arguments[0]
+htmlTags.forEach (tag) ->  global[tag.toUpperCase()] = -> 
+   if x.isModule (args = [].slice.call arguments)[0] then (if args.length is 1 then tagLine.bind args[0], tag else tagLine.call args[0], tag, args[1])
+   else tagLine tag, args[0]
 
-blazeTags = 'each if with unless'.split ' '
+_tag = (tag) -> (if tag is 'elif' then 'else if' else tag) + ' '
+blazeTags = 'each with unless if elif else'.split(' ')
 blazeTags.forEach (tag) -> global[tag] = -> switch 
-   when x.isObject obj = arguments[0] then (o={})[tag + ' ' + (key = x.keys(obj)[0])] = obj[key]; o 
-   when x.isString str = arguments[0] and x.isObject obj = arguments[1] and '$' of obj then (o={})[tag + ' ' + str] = obj.$; o
+   when x.isObject obj = arguments[0] then (o={})[_tag(tag) + (key = x.keys(obj)[0])] = obj[key]; o 
+   when x.isString str = arguments[0] and x.isObject(obj = arguments[1]) and newTab of obj then x.object {}, _tag(tag) + str, obj[newTab]
    else console.error 'Tag arguments are not (name: obj) or ("name", $: obj)'
 
 includeAttributes = (obj) -> x.keys(obj).map((k) ->  k + '="' + parseValue(obj[k]) + '"').join(' ')
 
-global.include = -> switch                  
-   when x.isObject obj = arguments[0] then x.object {}, '+' + (k = x.keys(obj)[0]) + '(' + includeAttributes(obj[k]) + ')', ''
-   when x.isString str = arguments[0]
-      if (args = Array.prototype.slice.call arguments).length > 1 then args.reduce ((o, k) -> x.object o, '+' + k, ''), {}
-      else x.object {}, '+' + str, ''
+global.include = -> (args = [].slice.call arguments).reduce ((o, arg) -> switch                  
+   when x.isObject arg then x.object o, '+' + (k = x.keys(arg)[0]) + '(' + includeAttributes(arg[k]) + ')', ''
+   when x.isString arg then x.object o, '+' + arg, ''
+   else console.err 'Invalid `include` arguments': args[0], arg), {}
 
 
-templateKey = (obj) ->
-   return obj unless x.isObject obj
-   x.reduceKeys obj, {}, (o, k) => switch
-      when (isId(k) or isClass k) and isAttribute obj[k]
-         x.assign o, templateKey.call @, tagLine.call @, idClassKey.call(@, k), obj[k]
-      when isId(k) or isClass(k) or isIdClass k
-         x.object o, idClassKey.call(@, k), if x.isObject obj[k] then templateKey.call @, obj[k] else parseValue obj[k]
+templateKey = (obj) -> 
+   if x.isObject obj then x.reduceKeys obj, {}, (o, k) => switch
+      when isIdOrClass(k) and isHtmlAttribute obj[k] then x.assign o, templateKey.call @, tagLine.call @, idClassKey.call(@, k), obj[k]
+      when isIdOrClass(k) then x.object o, idClassKey.call(@, k), templateKey.call @, obj[k]
       else x.object o, k, templateKey.call @, obj[k]
+   else parseValue(obj)
 
-toTemplate = (d) ->
-   return null if x.isEmpty @[d]
-   str = if x.isString @[d] then @[d] else indentStyle templateKey.call @, fixup.call(@, @[d]), @[x.f.id]
-   if x.isEmpty data = fixup.call @, @.eco then str else eco.render str, data
+eco = (str) -> if x.isEmpty data = fixup.call @, @.eco then str else eco.render str, data
 
-readExports = (f, kind) -> 
-   x.return if index_basename is base = path.basename f, coffee_ext then (nocacheRequire f)[kind]
-   else (updateRequire f)[base][kind]
+toTemplate = (d) -> switch
+   when x.isEmpty @[d]  then null
+   when x.isString @[d] then eco.call @, @[d]
+   when x.isObject(@[d]) or x.isArray @[d] then eco.call @, indentStyle templateKey.call @, fixup.call(@, @[d])
+   else console.error "Unknown type", @[d]
+
+readExports = (f) -> if _index_ is base = path.basename f, coffee_ext then nocacheRequire f else (nocacheRequire f)[base]
 
 build = () ->
    settings()
    spawn_command 'coffee', (if command in ['build', 'deploy'] then '-bc' else '-bcw'), ['-o', build_lib_path, site_coffees.join ' '], site_path
    mkdir build_client_path
-   @Modules = site_coffees.reduce ((o, f) -> x.assign o, readExports add(site_path, f), 'Modules'), {}
-   x.keys(@Modules).map (n) -> x.module n, @Modules[n] = x.return @Modules[n], x.return @Modules[n]
+   @Parts = Parts = x.return (source = site_coffees.reduce ((o, f) -> x.assign o, readExports add site_path, f), {})['Parts']
+   @Modules = x.return source['Modules']
+   (mkeys = x.keys @Modules).map (n) -> x.module n, @Modules[n] = x.return @Modules[n], x.return @Modules[n]
    x.keys(directives).map (d) -> 
       writeBuild (it = directives[d]).file, (x.return(it.header) || '') + 
-         x.keys(@Modules).map((n) -> 
+         mkeys.map((n) -> 
             @Modules[n][d] = x.return @Modules[n][d], @Modules[n]
             (b = toTemplate.call(@Modules[n], d)) and it.f.call @, n, b
          ).filter((o) -> o?).join ''
-   x.keys(@Modules).map((n, i) -> @Modules[n].style and api.add toStyle.call @Modules[n], 'style')
-      .concat([writeBuild 'absurd.css', api.compile()])
+   count = 0
+   mkeys.forEach (n) -> 
+      @Modules[n].style and api.add toStyle.call @Modules[n], 'style'
+      ++count is mkeys.length and writeBuild 'absurd.css', api.compile()
 
 gitpass = ->
    prompt.message = 'github'
@@ -541,56 +556,9 @@ ok   = -> console.log argv
 task or help()
 
 
-###
-__RmLog = ->
-   # node-logentries
-   arguments? and ([].slice.call(arguments)).forEach (str) ->
-      fs.appendFile home + '/.log.io/cake', str, (err) -> console.log err if err
-__RmUpdated = 'updated time'
-__RmMeteor_update = ->
-   spawn_command 'meteor', 'add', [
-      cubesat_name + '@' + getVersion add(cubesat_package_path, package_js), rePublish.meteor
-   ], build_path 
-
-
-__clean_up = ->
-   rmdir build_client_path 
-   rmdir build_lib_path 
-
-__daemon = ->
-   ps.lookup command: 'node',   psargs: 'ux', (e, a) -> 
-      node_ps = a.map (p) -> (p.arguments?[0]?.match /\/(log\.io-[a-z]+)$/)?[1]
-      'log.io-server'    in node_ps or spawn 'log.io-server',    [], stdio:'inherit'
-      'log.io-harvester' in node_ps or setTimeout( ( -> spawn 'log.io-harvester', [], stdio:'inherit' ), 100 )
-
-
-__stop_meteor = (func) ->
-   ps.lookup psargs: 'ux', (err, a) -> a.map (p, i) ->
-      ['3000', '3300'].map (port) -> 
-         if '--port' == p.arguments?[1] and port == p.arguments?[2]
-            process.kill p.pid, 'SIGKILL'
-      a.length - 1 == i and func? and func()
-
-__meteor_update = ->
-   cd site_meteor_path
-   spawn 'meteor', ['update'], stdio:'inherit'
-
-__meteor_publish_command = -> spawn 'meteor', ['publish'], stdio:'inherit'
-__meteor_command = (command, argument, path) -> 
-   cd path
-   console.log 'meteor', command, argument
-   spawn 'meteor', [command, argument], stdio:'inherit'
-__start_meteor = ->
-   stop_meteor -> 
-      meteor test_path, '3300'
-      #meteor site_meteor_path
-
-__hold_watch = (sec) -> updated = process.hrtime()[0] + sec
 
 __start_up = ->
    coffee_alone()
-   #chokidar.watch(settings_cson).on 'change', -> settings()
-   #chokidar.watch(test_lib_path).on 'change', (d) -> buid() # cp d, add build_lib_path, path.basename d
    lib_paths.concat([index_coffee_path]).map (f) -> 
       chokidar.watch(f).on 'change', -> build()
    hold_watch(2)
@@ -630,7 +598,3 @@ __commands = ->
       rl.close()
       process.exit 1
 
-__meteor = (dir, port='3000') ->
-   cd dir
-   spawn 'meteor', ['--port', port, '--settings', settings_json], stdio:'inherit'
-###
