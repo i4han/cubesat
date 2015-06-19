@@ -35,12 +35,20 @@ x.__isPortableKey = (v) -> /^[a-z]+$/i.test v  # . or '#' # remove this.
 x.__isValue  = (v) -> if x.isScalar v then v else false  # deprecated.
 
 
-valid =
-    name: /^[a-zA-Z0-9._-]+$/
-    email: /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i
-    attribute: /^[a-zA-Z]+$/
-x.valid = (kind, v) -> valid[kind].test v
+checkTable =
+    name:       (v) -> /^[a-zA-Z0-9._-]+$/.test v
+    email:      (v) -> /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i.test v
+    attribute:  (v) -> /^[a-zA-Z]+$/.test v
+    id:         (v) -> /^[a-z]+[0-9]+$/.test(v) and ! /^h[1-6]$/.test v
+    class:      (v) -> /^_[a-z]+[a-zA-Z0-9$]*$/.test v
+    'id&class': (v) -> /^[a-zA-Z0-9_$]+$/.test(v) and /_/.test v
 
+x.check = -> 
+    args = [].slice.call arguments
+    i = 0
+    while i < args.length - 1
+        return args[i - 1] if checkTable[args[i++]] args[-1..][0]
+    return false
 
 x.capitalize = (str) -> str[0].toUpperCase() + str[1..]
 x.camelize  = (str) ->  str.replace(/-([a-z])/g, (_, $1) -> $1.toUpperCase()).replace /\-/g, '$' 
@@ -77,10 +85,12 @@ x.assign = (obj) ->
 
 x.extend = x.assign                 # deprecated.
 x.remove = (obj, key) -> delete obj[key] ; obj
+x.pop    = (obj, key) -> ret = obj[key]; delete obj[key]; ret
 x.object = (obj) ->  # implemented ([[k1, v1], [k2, v2], [k3, v3]]) but not ([k1, k2, k3], [v1, v2, v3])
     args = [].slice.call arguments
     switch
-        when x.isObject obj then obj[args[1]] = args[2] ; obj
+        when x.isObject(obj) and x.isString args[1] then obj[args[1]] = args[2] ; obj
+        when x.isObject(obj) and x.isArray  args[1] then args[1..].forEach((a) -> obj[a[0]] = a[1]) ; obj
         when x.isArray obj  then obj.reduce ((o, a) -> o[a[0]] = a[1]; o), {}
 
 x.__addProperty = (obj, key, value) -> x.object obj, key, value   # deprecated.
@@ -98,8 +108,8 @@ x.__indentStyle = (obj, depth=1) ->
         (Array(depth).join '    ') + switch 
             when x.isObject value then [key, x.indentStyle(value, depth + 1)].join '\n'
             when '' is value      then key
-            when '' is key        then x.value value
-            else key + ' ' + x.value value
+            when '' is key        then x.__value value
+            else key + ' ' + x.__value value
     ).join '\n'
 
 
@@ -323,17 +333,24 @@ __localTags = (f, m) ->
     (tags = f.toString().match /(this\.H[1-6]|this\.[A-Z]+)[^\w]/g) and 
     tags.map((tag) -> tag.match(/[A-Z]+[1-6]?/)[0]).forEach (tag) ->  m[tag] = global[tag].bind(m)
 
-x.f = id: 'Id'
+x.parseValue = (str) -> 
+   return str unless x.isString str
+   str.replace(/(^|[^{])\{([^{}]+)\}($|[^}])/g, (m, $1, $2, $3) ->  $1 + '{{' + $2 + '}}' + $3 ) # escape double quote?
+
+moduleMethod = id: 'Id'
+x.key2class = (k) -> x.dasherize k[1..]
+x.key2id = (k) -> if k and moduleMethod.id of @ then @[moduleMethod.id] k else ''
+x.key2attribute = (k) -> x.dasherize k
 
 x.module = (name, m) -> #(i = new x.Module(name))._instance i
     m.name  = name
     m.label = m.label or x.capitalize name
     m.block = m.block or 'x'
     (m.fn = x.return m.fn, m) and x.keys(m.fn).forEach (f) -> m[f] = m.fn[f] 
-    m[x.f.id] = m.fn and m.fn[x.f.id] or (id) -> if id[0] is '#' then '#' + name + '-' + id[1..] else name + '-' + id
+    m[moduleMethod.id] = m.fn and m.fn[moduleMethod.id] or (id) -> if id[0] is '#' then '#' + name + '-' + id[1..] else name + '-' + id
     #m.template and localTags m.template, m
 
-x.isModule = (m) -> x.isObject(m) and x.f.id of m and 'label' of m
+x.isModule = (m) -> x.isObject(m) and moduleMethod.id of m and 'label' of m
 
 class x.Style
     constructor: (selector) ->

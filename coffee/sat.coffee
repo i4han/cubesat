@@ -272,12 +272,13 @@ writeBuild = (file, data) ->
 
 fixup = (v) -> switch
    when !v? then {}
-   when x.isString v then ((o = {})[v] = '') or o
+   when x.isString   v then x.object {}, v, ''   ##((o = {})[v] = '') or o
    when x.isFunction v then (if x.isScalar(r = x.return v, @) then r else fixup.call @, r)
-   when x.isArray  v then v.reduce ((o, w) -> x.assign o, fixup.call @, w), {}
-   when x.isObject v then x.reduceKeys v, {}, (o, k) ->
-      if Parts and k of Parts then x.assign o, fixup.call @, Parts[k] v[k]
+   when x.isArray    v then v.reduce ((o, w) -> x.assign o, fixup.call @, w), {}
+   when x.isObject   v then x.reduceKeys v, {}, (o, k) =>
+      if Parts and k of Parts then x.assign o, fixup.call @, Parts[k].call @, v[k]
       else x.object o, k, (if x.isScalar(r = v[k]) then r else fixup.call @, r)
+      o
 
 seperators = 
    jade:  ''
@@ -298,38 +299,30 @@ cssDefaults = (obj) ->
       else ok
    obj
 
-isId        = (str) -> /^[a-z]+[0-9]+$/.test(str) and ! /^h[1-6]$/.test str
-isClass     = (str) -> /^_[a-z]+[a-zA-Z0-9$]*$/.test str
-isIdClass   = (str) -> /^[a-zA-Z0-9_$]+$/.test(str) and /_/.test str
-isIdOrClass = (str) -> isId(str) or isClass(str) or isIdClass str
-
-key2class = (k) -> x.dasherize k[1..]
-key2id = (_this_, k) -> _this_[x.f.id] k
-
 idClassKey = (key, s='') ->
-   (key = key.replace r, (m, $1) => key2id @, $1) while (r=new RegExp /\[(#?[a-z]+[0-9]+)\]/).test key
+   (key = key.replace r, (m, $1) => x.key2id.call @, $1) while (r=new RegExp /\[(#?[a-z]+[0-9]+)\]/).test key
    switch
-      when isId key    then ['#' + key2id @, key]
-      when isClass key then ['.' + key2class key]
-      when isIdClass key then key.split('_').map((a, i) => switch
+      when x.check 'id', key    then '#' + x.key2id.call @, key
+      when x.check 'class', key then '.' + x.key2class key
+      when x.check 'id&class', key then key.split('_').map((a, i) => switch
             when '' is a   then null
-            when isId a    then '#' + key2id @, a
-            when isClass '_' + a then '.' + key2class a
+            when x.check 'id', a    then '#' + x.key2id.call @, a
+            when x.check 'class', '_' + a then '.' + x.key2class a
             else console.error 'Unknown ID or class:', a
          ).filter((f) -> f).join s
       else key
 
 styleMediaQuery = (k) -> k
 
-styleKey = (obj) -> x.reduceKeys obj, {}, (o, k) => switch
-   when k[0] is '@' then x.object o, styleMediaQuery(k), styleKey.call @, obj[k]
-   when k of Parts then x.assign o, Parts[k] obj[k]
+styleLoop = (obj) -> x.reduceKeys obj, {}, (o, k) => switch
+   when k[0] is '@' then x.object o, styleMediaQuery(k), styleLoop.call @, obj[k]
+   when k of Parts then x.assign o, Parts[k].call @, obj[k]
    when k isnt idk = idClassKey.call(@, k) then x.object o, idk, obj[k]
    else x.object o, k, obj[k]
 
 
 toStyle = (d) -> cssDefaults x.reduceKeys (obj = fixup.call @, @[d]), {}, (o, k) =>
-   x.object o, idClassKey.call(@, k, ' '),  styleKey.call @, obj[k]
+   x.object o, idClassKey.call(@, k, ' '),  styleLoop.call @, obj[k]
 
 indentStyle = (obj, depth=1) ->
    return obj unless x.isObject obj 
@@ -337,50 +330,52 @@ indentStyle = (obj, depth=1) ->
       if x.isObject value = obj[key] then [key, indentStyle(value, depth + 1)].join '\n' else key + ' ' + value
    ).join '\n'
 
-parseValue = (str) -> 
-   return str unless x.isString str
-   str.replace(/(^|[^{])\{([^{}]+)\}($|[^}])/g, (m, $1, $2, $3) ->  $1 + '{{' + $2 + '}}' + $3 ) # double quote?
-
-attributeClass = (key, value) ->
-   if value then (value.split ' ').reverse().map((k) -> k and key2class(key) + '-' +  k).concat(key[1..]).reverse().filter((v) -> v).join ' '
-   else key2class(key)
+attributeClass = (key, value) -> if value then value.replace /\*/g, x.key2class key else x.key2class key
    
 addAttribute = (o, attr, value, seperator=' ') ->
-   x.object o, attr, if o[attr] and o[attr].length > 0 then o[attr] = [o[attr], value].join seperator else value
-
-setAttribute = (o, attr, value) -> x.object o, attr, value
+   x.object o, attr, if o[attr] and o[attr].length > 0 then o[attr] + seperator + value else value
 
 attributeParse = (obj) ->
    x.keys(p = x.reduceKeys obj, {}, (o, k) -> switch
-      when isClass k    then addAttribute o, 'class', attributeClass k, obj[k]
-      when 'id' is k and isId(obj[k]) and x.isModule(@) then setAttribute o, k, key2id @, obj[k]
+      when x.check 'class', k    then addAttribute o, 'class', attributeClass k, obj[k]
+      when 'id' is k and x.check('id', obj[k]) and x.isModule(@) then x.object o, x.key2attribute(k), x.key2id.call @, obj[k]
       when k is 'class' then addAttribute o, 'class', obj[k]
-      else setAttribute o, k, obj[k]
-   ).map((k) ->  k + '="' + parseValue(p[k]) + '"').join(' ')
+      else x.object o, x.key2attribute(k), obj[k]
+   ).map((k) -> switch p[k]
+      when '' then k
+      else k + '="' + x.parseValue(p[k]) + '"'
+   ).filter((v) -> v).join(' ')
 
 attributeBracket = (obj) ->
    delete (o = x.assign {}, obj)[newTab]
    if x.isEmpty(o) then '' else '(' + attributeParse.call(@, o) + ')'
 
 codeLine = (o, tag, obj) -> 
-   isClass(_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', key2class _class), obj[_class]), _class
-   x.object o, tag + attributeBracket.call(@, obj), if newTab of obj then parseValue obj[newTab] else ''
+   x.check('class',_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
+   x.object o, tag + attributeBracket.call(@, obj), if newTab of obj then x.parseValue obj[newTab] else ''
 
 htmlAttributes = 'id class style src height width href size name'.split ' '
 isHtmlAttribute = (obj) -> x.isObject(obj) and x.keys(obj)[0] in htmlAttributes
 
-tagLine = (tag, obj) -> switch
-   when x.isString obj  then codeLine.call @, {}, tag, x.object {}, newTab, parseValue obj
-   when x.isNumber obj  then console.error 'NUMBER?'
-   when x.isArray obj   then console.error 'ARRAY?'
-   when x.valid('attribute', k = (keys = x.keys obj)[0]) or isClass k then codeLine.call @, {}, tag, obj
-   when isId k then keys.reduce ((o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', key2id @, v), {}
-   else console.err 'Unknown', tag, obj #x.object {}, tag, obj
+tagLine = (tag, obj, str) ->
+   x.isObject(obj) and obj = fixup.call @, obj
+   args = ([].slice.call arguments)[2..]
+   str and x.object obj, newTab, if args.length is 1 then args[0] else args
+   switch
+      when x.isString obj  then codeLine.call @, {}, tag, x.object {}, newTab, x.parseValue obj
+      when x.isNumber obj  then console.error 'NUMBER?'
+      when x.isArray obj   then console.error 'ARRAY?'
+      when x.check('attribute', k = (keys = x.keys obj)[0]) or x.check 'class', k then codeLine.call @, {}, tag, obj
+      when x.check('id', k) and newTab in keys then codeLine.call @, {}, tag, x.object obj[k], ['id', x.key2id.call @, k], [newTab, obj[newTab]]
+      when x.check 'id', k
+         x.keys(obj[k]).forEach (kk) -> x.check('id', kk) and x.object obj, kk, x.pop obj[k][kk]
+         x.keys(obj).reduce ((o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', x.key2id.call @, v), {}
+      else console.error 'Unknown TAG', tag, obj #x.object {}, tag, obj
 
 htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
 htmlTags.forEach (tag) ->  global[tag.toUpperCase()] = -> 
-   if x.isModule (args = [].slice.call arguments)[0] then (if args.length is 1 then tagLine.bind args[0], tag else tagLine.call args[0], tag, args[1])
-   else tagLine tag, args[0]
+   if x.isModule (args = [].slice.call arguments)[0] then (if args.length is 1 then tagLine.bind args[0], tag else tagLine.apply args[0], [tag].concat args[1..])
+   else tagLine.apply null, [tag].concat args
 
 _tag = (tag) -> (if tag is 'elif' then 'else if' else tag) + ' '
 blazeTags = 'each with unless if elif else'.split(' ')
@@ -389,7 +384,7 @@ blazeTags.forEach (tag) -> global[tag] = -> switch
    when x.isString str = arguments[0] and x.isObject(obj = arguments[1]) and newTab of obj then x.object {}, _tag(tag) + str, obj[newTab]
    else console.error 'Tag arguments are not (name: obj) or ("name", $: obj)'
 
-includeAttributes = (obj) -> x.keys(obj).map((k) ->  k + '="' + parseValue(obj[k]) + '"').join(' ')
+includeAttributes = (obj) -> x.keys(obj).map((k) ->  k + '="' + x.parseValue(obj[k]) + '"').join(' ')
 
 global.include = -> (args = [].slice.call arguments).reduce ((o, arg) -> switch                  
    when x.isObject arg then x.object o, '+' + (k = x.keys(arg)[0]) + '(' + includeAttributes(arg[k]) + ')', ''
@@ -397,19 +392,19 @@ global.include = -> (args = [].slice.call arguments).reduce ((o, arg) -> switch
    else console.err 'Invalid `include` arguments': args[0], arg), {}
 
 
-templateKey = (obj) -> 
+toTemplateLoop = (obj) -> 
    if x.isObject obj then x.reduceKeys obj, {}, (o, k) => switch
-      when isIdOrClass(k) and isHtmlAttribute obj[k] then x.assign o, templateKey.call @, tagLine.call @, idClassKey.call(@, k), obj[k]
-      when isIdOrClass(k) then x.object o, idClassKey.call(@, k), templateKey.call @, obj[k]
-      else x.object o, k, templateKey.call @, obj[k]
-   else parseValue(obj)
+      when x.check('id', 'class', k) and isHtmlAttribute obj[k] then x.assign o, toTemplateLoop.call @, tagLine.call @, idClassKey.call(@, k), obj[k]
+      when x.check 'id', 'class', k then x.object o, idClassKey.call(@, k), toTemplateLoop.call @, obj[k]
+      else x.object o, k, toTemplateLoop.call @, obj[k]
+   else x.parseValue(obj)
 
 eco = (str) -> if x.isEmpty data = fixup.call @, @.eco then str else eco.render str, data
 
 toTemplate = (d) -> switch
    when x.isEmpty @[d]  then null
    when x.isString @[d] then eco.call @, @[d]
-   when x.isObject(@[d]) or x.isArray @[d] then eco.call @, indentStyle templateKey.call @, fixup.call(@, @[d])
+   when x.isObject(@[d]) or x.isArray @[d] then eco.call @, indentStyle toTemplateLoop.call @, fixup.call(@, @[d])
    else console.error "Unknown type", @[d]
 
 readExports = (f) -> if _index_ is base = path.basename f, coffee_ext then nocacheRequire f else (nocacheRequire f)[base]
@@ -466,7 +461,7 @@ meteor_create = (dir, fn) ->
       )()
 
 create = ->
-   x.valid('name', site = argv._[0]) or console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) or process.exit 1
+   x.check('name', site = argv._[0]) or console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) or process.exit 1
    fs.mkdir site, (e) ->
       e and (console.error("error: Can not create", site) or process.exit 1)
       (spawn_command 'git', 'clone', [github_url(argv.repo or 'i4han/sat-init'), '.'], site).on 'exit', (code) ->

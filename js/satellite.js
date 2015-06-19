@@ -88,7 +88,7 @@ Meteor.startup(function() {
       _.path && Router.route(n, x["return"]({
         path: _.path
       }));
-      _.events && Template[n].events(x.tideEventKey(x["return"](_.events, _), _[x.f.id]));
+      _.events && Template[n].events(x.tideEventKey(x["return"](_.events, _), x.key2id.bind(_)));
       _.helpers && Template[n].helpers(x["return"](_.helpers, _));
       _.on$Ready && $(function($) {
         return _.on$Ready.call(_);

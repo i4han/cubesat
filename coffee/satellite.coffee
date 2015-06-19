@@ -40,8 +40,8 @@ Meteor.startup ->
             _.onStartup   and _.onStartup.call _
             _.path        and Router.route n, x.return path: _.path #Router.route _.path#, name: n, template: n
             #_.router      and Router.map -> @route n, x.return _.router        #, data: -> Session.set 'params', @params
-            _.events      and Template[n].events x.tideEventKey x.return(_.events, _), _[x.f.id]
-            _.helpers     and Template[n].helpers x.return _.helpers, _  # @data context
+            _.events      and Template[n].events x.tideEventKey x.return(_.events, _), x.key2id.bind _ #_[x.f.id]
+            _.helpers     and Template[n].helpers x.return _.helpers, _     # @data context
             _.on$Ready    and $ ($) -> _.on$Ready.call _
             _.onDeviceReady and document.addEventListener 'deviceready', _.onDeviceReady
             ('onCreated onRendered onDestroyed'.split ' ').forEach (d) -> 

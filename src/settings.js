@@ -3,10 +3,13 @@ x        = {$:{}};
 db       = {};
 Modules  = {};
 exports  = {};
-Settings = Meteor.settings ? Meteor.settings : {}
 
 if (Meteor.isServer) {
+	Settings = Meteor.settings ? Meteor.settings : {}
 } else if (Meteor.isClient) {
+	Settings = {};
+	'public' in Meteor.settings && (Settings = Meteor.settings.public)
+
 	window.style = {}
 	window.o = {$:[]}; 
 
