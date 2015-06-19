@@ -86,6 +86,11 @@ x.assign = (obj) ->
 x.extend = x.assign                 # deprecated.
 x.remove = (obj, key) -> delete obj[key] ; obj
 x.pop    = (obj, key) -> ret = obj[key]; delete obj[key]; ret
+x.array  = (a) -> 
+    args = [].slice.call arguments
+    a = a.concat args[1..]
+    a
+
 x.object = (obj) ->  # implemented ([[k1, v1], [k2, v2], [k3, v3]]) but not ([k1, k2, k3], [v1, v2, v3])
     args = [].slice.call arguments
     switch
@@ -117,7 +122,7 @@ x.hash  = ->
     ((Iron.Location.get().hash[1..].split '&').map (a) -> a.split '=').reduce ((p, c) ->  p[c[0]] = c[1]; p), {}
 
 x.indentString = Array(3 + 1).join ' ' 
-x.indent = (b, i, str) -> if i then b.replace /^/gm, Array(i + 1).join(str or x.indentString) else b
+x.indent = (b, i=1, str) -> if i then b.replace /^/gm, Array(i + 1).join(str or x.indentString) else b
 x.repeat = (str, times) -> Array(times + 1).join str
 x.__saveMustache = (str) -> x.decode( x.decode( str, '{', 2 ), '}', 2 )
 x.__trim = (str) -> if str? then str.trim() else null
@@ -301,7 +306,7 @@ x.__tideKey = (obj, fid, seperator) ->
 
 
 tideEventKey = (key, fid) ->
-    key = (key.replace re, (m, $1, $2, $3) -> $1+fid($2)+$3) while (re = new RegExp /(\s+)\[(#[a-z_]+[0-9]+)\](,|\s+|$)/).test key
+    key = (key.replace re, (m, $1, $2, $3) -> $1+fid($2)+$3) while (re = new RegExp /(\s+)\<(#[a-z_]+[0-9]+)\>(,|\s+|$)/).test key
     key
 
 x.tideEventKey = (obj, fid) -> x.keys(obj).reduce ((o, k) -> x.object o, tideEventKey(k, fid), obj[k]), {}

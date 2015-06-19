@@ -243,14 +243,15 @@ directives =
       file: '2.html'
       f: (n, b) -> b = x.indent(b, 1); jade.compile( "template(name='#{n}')\n#{b}\n\n", null )()
    template:
-      file: 'template.jade'
-      f: (n, b) -> b = x.indent(b, 1); "template(name='#{n}')\n#{b}\n\n"
+      file: 'template.html'
+      f: (n, b) -> b = x.indent(b, 1); "<template name=\"#{n}\">\n#{b}\n</template>\n\n\n"
    HTML:
       file: '3.html'
       f: (n, b) -> b = x.indent(b, 1); "<template name=\"#{n}\">\n#{b}\n</template>\n"
    head:
-      file: '0.jade'
-      header: -> 'head\n'    #  'doctype html\n' has not yet suppored
+      file: 'head.html'
+      header: -> '<head>\n'    #  'doctype html\n' has not yet suppored
+      footer: -> '</head>\n'    #  'doctype html\n' has not yet suppored
       f: (n, b) -> x.indent(b, 1) + '\n'
    less:
       file: '7.less'
@@ -278,7 +279,6 @@ fixup = (v) -> switch
    when x.isObject   v then x.reduceKeys v, {}, (o, k) =>
       if Parts and k of Parts then x.assign o, fixup.call @, Parts[k].call @, v[k]
       else x.object o, k, (if x.isScalar(r = v[k]) then r else fixup.call @, r)
-      o
 
 seperators = 
    jade:  ''
@@ -325,7 +325,7 @@ toStyle = (d) -> cssDefaults x.reduceKeys (obj = fixup.call @, @[d]), {}, (o, k)
    x.object o, idClassKey.call(@, k, ' '),  styleLoop.call @, obj[k]
 
 indentStyle = (obj, depth=1) ->
-   return obj unless x.isObject obj 
+   return obj unless x.isObject obj
    x.keys(obj).map((key) -> Array(depth).join(x.indentString || '  ') +  
       if x.isObject value = obj[key] then [key, indentStyle(value, depth + 1)].join '\n' else key + ' ' + value
    ).join '\n'
@@ -337,7 +337,7 @@ addAttribute = (o, attr, value, seperator=' ') ->
 
 attributeParse = (obj) ->
    x.keys(p = x.reduceKeys obj, {}, (o, k) -> switch
-      when x.check 'class', k    then addAttribute o, 'class', attributeClass k, obj[k]
+      when x.check 'class', k  then addAttribute o, 'class', attributeClass k, obj[k]
       when 'id' is k and x.check('id', obj[k]) and x.isModule(@) then x.object o, x.key2attribute(k), x.key2id.call @, obj[k]
       when k is 'class' then addAttribute o, 'class', obj[k]
       else x.object o, x.key2attribute(k), obj[k]
@@ -350,14 +350,41 @@ attributeBracket = (obj) ->
    delete (o = x.assign {}, obj)[newTab]
    if x.isEmpty(o) then '' else '(' + attributeParse.call(@, o) + ')'
 
+
 codeLine = (o, tag, obj) -> 
    x.check('class',_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
    x.object o, tag + attributeBracket.call(@, obj), if newTab of obj then x.parseValue obj[newTab] else ''
+
+
+attributes = (obj) ->
+   delete (o = x.assign {}, obj)[newTab]
+   if x.isEmpty(o) then '' else ' ' + attributeParse.call(@, o)
+
+htmlNoEndTags = 'area base br col command embed hr img input link meta param source'.split(' ')
+
+codeStr = (tag, obj) -> 
+   x.check('class',_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
+   '<' + tag + attributes.call(@, obj) + '>' + (if newTab of obj then '\n' + x.indent(x.parseValue obj[newTab]) + '\n' else '') + (if tag in htmlNoEndTags then '' else '</' + tag + '>') + '' 
 
 htmlAttributes = 'id class style src height width href size name'.split ' '
 isHtmlAttribute = (obj) -> x.isObject(obj) and x.keys(obj)[0] in htmlAttributes
 
 tagLine = (tag, obj, str) ->
+   x.isObject(obj) and obj = fixup.call @, obj
+   args = ([].slice.call arguments)[2..]
+   str and x.object obj, newTab, if args.length is 1 then args[0] else args.join '\n'
+   switch
+      when x.isString obj  then codeStr.call @, tag, x.object {}, newTab, x.parseValue obj
+      when x.isNumber obj  then console.error 'NUMBER?'
+      when x.isArray obj   then console.error 'ARRAY?'
+      when x.check('attribute', k = (keys = x.keys obj)[0]) or x.check 'class', k then codeStr.call @, tag, obj
+      when x.check('id', k) and newTab in keys then codeStr.call @, tag, x.object obj[k], ['id', x.key2id.call @, k], [newTab, obj[newTab]]
+      when x.check 'id', k
+         x.keys(obj[k]).forEach (kk) -> x.check('id', kk) and x.object obj, kk, x.pop obj[k][kk]
+         x.reduceKeys obj, '', (o, v) => o + codeStr.call @, tag, x.object obj[v], 'id', x.key2id.call @, v
+      else console.error 'Unknown TAG', tag, obj #x.object {}, tag, obj
+
+_tagLine = (tag, obj, str) ->
    x.isObject(obj) and obj = fixup.call @, obj
    args = ([].slice.call arguments)[2..]
    str and x.object obj, newTab, if args.length is 1 then args[0] else args
@@ -369,27 +396,25 @@ tagLine = (tag, obj, str) ->
       when x.check('id', k) and newTab in keys then codeLine.call @, {}, tag, x.object obj[k], ['id', x.key2id.call @, k], [newTab, obj[newTab]]
       when x.check 'id', k
          x.keys(obj[k]).forEach (kk) -> x.check('id', kk) and x.object obj, kk, x.pop obj[k][kk]
-         x.keys(obj).reduce ((o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', x.key2id.call @, v), {}
+         x.reduceKeys obj, {}, (o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', x.key2id.call @, v
       else console.error 'Unknown TAG', tag, obj #x.object {}, tag, obj
 
 htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
+
 htmlTags.forEach (tag) ->  global[tag.toUpperCase()] = -> 
    if x.isModule (args = [].slice.call arguments)[0] then (if args.length is 1 then tagLine.bind args[0], tag else tagLine.apply args[0], [tag].concat args[1..])
    else tagLine.apply null, [tag].concat args
 
-_tag = (tag) -> (if tag is 'elif' then 'else if' else tag) + ' '
-blazeTags = 'each with unless if elif else'.split(' ')
-blazeTags.forEach (tag) -> global[tag] = -> switch 
-   when x.isObject obj = arguments[0] then (o={})[_tag(tag) + (key = x.keys(obj)[0])] = obj[key]; o 
-   when x.isString str = arguments[0] and x.isObject(obj = arguments[1]) and newTab of obj then x.object {}, _tag(tag) + str, obj[newTab]
-   else console.error 'Tag arguments are not (name: obj) or ("name", $: obj)'
+['$each', '$with'].forEach (tag) -> global[tag] = (obj) -> '{{#' + tag[1..] + ' ' + (key = x.keys(obj)[0]) + '}}\n' + x.indent(obj[key]) + '\n{{/' + tag[1..] + '}}'
+['$if', '$unless'].forEach (tag) -> global[tag] = (obj) -> '{{#' + tag[1..] + ' ' + (key = x.keys(obj)[0]) + '}}\n' + x.indent(obj[key]) + ''
+['$else']         .forEach (tag) -> global[tag] = -> "{{##{tag[1..]}}}"
 
-includeAttributes = (obj) -> x.keys(obj).map((k) ->  k + '="' + x.parseValue(obj[k]) + '"').join(' ')
+includeAttributes = (obj) -> ' ' + x.keys(obj).map((k) ->  k + '="' + x.parseValue(obj[k]) + '"').join(' ')
 
-global.include = -> (args = [].slice.call arguments).reduce ((o, arg) -> switch                  
-   when x.isObject arg then x.object o, '+' + (k = x.keys(arg)[0]) + '(' + includeAttributes(arg[k]) + ')', ''
-   when x.isString arg then x.object o, '+' + arg, ''
-   else console.err 'Invalid `include` arguments': args[0], arg), {}
+global.$include = -> x.reduce((args = [].slice.call arguments), [], (o, arg) -> x.array o, switch                  
+   when x.isObject arg then '{{> ' + (k = x.keys(arg)[0]) + includeAttributes(arg[k]) + '}}'
+   when x.isString arg then '{{> ' + arg + '}}'
+   else console.error 'Invalid `include` arguments', args[0], arg).join '\n'
 
 
 toTemplateLoop = (obj) -> 
@@ -421,7 +446,7 @@ build = () ->
          mkeys.map((n) -> 
             @Modules[n][d] = x.return @Modules[n][d], @Modules[n]
             (b = toTemplate.call(@Modules[n], d)) and it.f.call @, n, b
-         ).filter((o) -> o?).join ''
+         ).filter((o) -> o?).join('') + (x.return(it.footer) || '')
    count = 0
    mkeys.forEach (n) -> 
       @Modules[n].style and api.add toStyle.call @Modules[n], 'style'

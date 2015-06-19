@@ -269,6 +269,14 @@ x.pop = function(obj, key) {
   return ret;
 };
 
+x.array = function(a) {
+  var args;
+
+  args = [].slice.call(arguments);
+  a = a.concat(args.slice(1));
+  return a;
+};
+
 x.object = function(obj) {
   var args;
 
@@ -345,6 +353,9 @@ x.hash = function() {
 x.indentString = Array(3 + 1).join(' ');
 
 x.indent = function(b, i, str) {
+  if (i == null) {
+    i = 1;
+  }
   if (i) {
     return b.replace(/^/gm, Array(i + 1).join(str || x.indentString));
   } else {
@@ -771,7 +782,7 @@ x.__tideKey = function(obj, fid, seperator) {
 tideEventKey = function(key, fid) {
   var re;
 
-  while ((re = new RegExp(/(\s+)\[(#[a-z_]+[0-9]+)\](,|\s+|$)/)).test(key)) {
+  while ((re = new RegExp(/(\s+)\<(#[a-z_]+[0-9]+)\>(,|\s+|$)/)).test(key)) {
     key = key.replace(re, function(m, $1, $2, $3) {
       return $1 + fid($2) + $3;
     });
