@@ -1,3 +1,4 @@
 .npm/
 js/
+coffee/*.js
 npm-debug.log
