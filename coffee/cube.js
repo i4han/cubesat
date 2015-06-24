@@ -53,13 +53,12 @@ mongoClient = function(cs, that) {
 };
 
 Meteor.startup(function() {
-  var Modules;
+  var Modules, Parts;
 
+  Parts = x["return"](exports.Parts);
   Modules = x["return"](exports.Modules);
-  x.keys(exports).filter(function(k) {
-    return /[a-z]/.test(k[0]);
-  }).map(function(f) {
-    return x.assign(Modules, x["return"](exports[f].Modules));
+  x.eachKeys(exports, function(k) {
+    return x.isLower(k) && x.assign(Modules, x["return"](exports[f].Modules));
   });
   x.keys(this.Modules = Modules).map(function(n) {
     return x.module.call(this, n, Modules[n] = x["return"](Modules[n], x["return"](Modules[n])));
@@ -75,10 +74,8 @@ Meteor.startup(function() {
       return _.onServer && _.onServer.call(_);
     });
   } else if (Meteor.isClient) {
+    exports.Functions.installParts(Parts);
     x.isEmpty(collections) || mongoClient(collections);
-    Router.configure({
-      layoutTemplate: 'layout'
-    });
     x.keys(Modules).map(function(n) {
       var _;
 
@@ -88,17 +85,21 @@ Meteor.startup(function() {
       _.path && Router.route(n, x["return"]({
         path: _.path
       }));
-      _.events && Template[n].events(x.tideEventKey(x["return"](_.events, _), x.key2id.bind(_)));
-      _.helpers && Template[n].helpers(x["return"](_.helpers, _));
       _.on$Ready && $(function($) {
         return _.on$Ready.call(_);
       });
       _.onDeviceReady && document.addEventListener('deviceready', _.onDeviceReady);
+      _.template && (Template[n] = new Template('Template.' + n, _.template));
+      _.events && Template[n].events(x.tideEventKey(x["return"](_.events, _), x.key2id.bind(_)));
+      _.helpers && Template[n].helpers(x["return"](_.helpers, _));
       return ('onCreated onRendered onDestroyed'.split(' ')).forEach(function(d) {
         return _[d] && Template[n][d](function() {
           return _[d].call(_);
         });
       });
+    });
+    Router.configure({
+      layoutTemplate: 'layout'
     });
     return $(function($) {
       var k, _results;

@@ -2,6 +2,7 @@
 x        = {$:{}};
 db       = {};
 Modules  = {};
+Parts    = {};
 exports  = {};
 
 if (Meteor.isServer) {

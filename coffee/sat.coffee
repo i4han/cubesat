@@ -74,7 +74,7 @@ options =
    T: full: 'for-test',  command: ['run', 'coffee', 'install-mobile'], description: 'Excute for test.'
 
 if site_path is '' and tasks[command]?.dotsat
-   console.log 'fatal: "sat' + command + '" must run in .sat working directory or its subdirectory.'
+   console.log 'fatal: "sat ' + command + '" must run in .sat working directory or its subdirectory.'
    process.exit 1
 site_path and site_coffees = fs.readdirSync(site_path).filter (f) -> coffee_ext is path.extname f
 [home, cubesat_path, dot_cubesat_path, site_path].forEach (_path) ->
@@ -97,7 +97,7 @@ Settings = loadSettings settings_path = add dot_cubesat_path, 'settings.coffee'
 settings_json =  add build_path,   'settings.json'
 nconf.file file: add dot_sat_path, 'config.json'
 
-@Theme = @Modules = Parts = {}
+@Theme = @Modules = global.Parts = {}
 
 func2val = (f, _) -> 
    if x.isObject f
@@ -242,7 +242,7 @@ directives =
    jade$:
       file: '2.html'
       f: (n, b) -> b = x.indent(b, 1); jade.compile( "template(name='#{n}')\n#{b}\n\n", null )()
-   template:
+   template$:
       file: 'template.html'
       f: (n, b) -> b = x.indent(b, 1); "<template name=\"#{n}\">\n#{b}\n</template>\n\n\n"
    HTML:
@@ -250,7 +250,7 @@ directives =
       f: (n, b) -> b = x.indent(b, 1); "<template name=\"#{n}\">\n#{b}\n</template>\n"
    head:
       file: 'head.html'
-      header: -> '<head>\n'    #  'doctype html\n' has not yet suppored
+      header: -> '<head>\n'     #  'doctype html\n' has not yet suppored
       footer: -> '</head>\n'    #  'doctype html\n' has not yet suppored
       f: (n, b) -> x.indent(b, 1) + '\n'
    less:
@@ -273,11 +273,11 @@ writeBuild = (file, data) ->
 
 fixup = (v) -> switch
    when !v? then {}
-   when x.isString   v then x.object {}, v, ''   ##((o = {})[v] = '') or o
+   when x.isString   v then x.object {}, v, ''
    when x.isFunction v then (if x.isScalar(r = x.return v, @) then r else fixup.call @, r)
    when x.isArray    v then v.reduce ((o, w) -> x.assign o, fixup.call @, w), {}
    when x.isObject   v then x.reduceKeys v, {}, (o, k) =>
-      if Parts and k of Parts then x.assign o, fixup.call @, Parts[k].call @, v[k]
+      if '$' is k[0] and k of Parts then x.assign o, fixup.call @, Parts[k].call @, v[k]
       else x.object o, k, (if x.isScalar(r = v[k]) then r else fixup.call @, r)
 
 seperators = 
@@ -335,16 +335,17 @@ attributeClass = (key, value) -> if value then value.replace /\*/g, x.key2class 
 addAttribute = (o, attr, value, seperator=' ') ->
    x.object o, attr, if o[attr] and o[attr].length > 0 then o[attr] + seperator + value else value
 
-attributeParse = (obj) ->
+attributeParse = (obj, seperator, fixKeys=true) ->
    x.keys(p = x.reduceKeys obj, {}, (o, k) -> switch
       when x.check 'class', k  then addAttribute o, 'class', attributeClass k, obj[k]
-      when 'id' is k and x.check('id', obj[k]) and x.isModule(@) then x.object o, x.key2attribute(k), x.key2id.call @, obj[k]
+      when 'id' is k and x.check('id', obj[k]) and x.isModule(@) then x.object o, 'id', x.key2id.call @, obj[k]
       when k is 'class' then addAttribute o, 'class', obj[k]
-      else x.object o, x.key2attribute(k), obj[k]
-   ).map((k) -> switch p[k]
-      when '' then k
+      else x.object o, (if fixKeys then x.key2attribute(k) else k), obj[k]
+   ).map((k) -> switch 
+      when '' is p[k] then k
+      when x.isBoolean p[k] then k + '=' + p[k]
       else k + '="' + x.parseValue(p[k]) + '"'
-   ).filter((v) -> v).join(' ')
+   ).filter((v) -> v).join(seperator or ' ')
 
 attributeBracket = (obj) ->
    delete (o = x.assign {}, obj)[newTab]
@@ -352,7 +353,7 @@ attributeBracket = (obj) ->
 
 
 codeLine = (o, tag, obj) -> 
-   x.check('class',_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
+   x.check('class',_class = x.theKey obj) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
    x.object o, tag + attributeBracket.call(@, obj), if newTab of obj then x.parseValue obj[newTab] else ''
 
 
@@ -360,14 +361,16 @@ attributes = (obj) ->
    delete (o = x.assign {}, obj)[newTab]
    if x.isEmpty(o) then '' else ' ' + attributeParse.call(@, o)
 
+ionAttributes = (o) -> if x.isEmpty(o) then '' else ' ' + attributeParse(o, ' ', false)
+
 htmlNoEndTags = 'area base br col command embed hr img input link meta param source'.split(' ')
 
 codeStr = (tag, obj) -> 
-   x.check('class',_class = x.keys(obj)[0]) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
+   x.check('class',_class = x.theKey obj) and x.isObject(obj[_class]) and x.remove x.assign(x.object(obj, 'class', x.key2class _class), obj[_class]), _class
    '<' + tag + attributes.call(@, obj) + '>' + (if newTab of obj then '\n' + x.indent(x.parseValue obj[newTab]) + '\n' else '') + (if tag in htmlNoEndTags then '' else '</' + tag + '>') + '' 
 
 htmlAttributes = 'id class style src height width href size name'.split ' '
-isHtmlAttribute = (obj) -> x.isObject(obj) and x.keys(obj)[0] in htmlAttributes
+isHtmlAttribute = (obj) -> x.isObject(obj) and x.theKey(obj) in htmlAttributes
 
 tagLine = (tag, obj, str) ->
    x.isObject(obj) and obj = fixup.call @, obj
@@ -399,28 +402,53 @@ _tagLine = (tag, obj, str) ->
          x.reduceKeys obj, {}, (o, v) => codeLine.call @, o, tag, x.object obj[v], 'id', x.key2id.call @, v
       else console.error 'Unknown TAG', tag, obj #x.object {}, tag, obj
 
+global.blaze  = {}
+global.ionic  = {}
+global.sat    = {}
+global.html   = {}
+
 htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
 
-htmlTags.forEach (tag) ->  global[tag.toUpperCase()] = -> 
-   if x.isModule (args = [].slice.call arguments)[0] then (if args.length is 1 then tagLine.bind args[0], tag else tagLine.apply args[0], [tag].concat args[1..])
-   else tagLine.apply null, [tag].concat args
+htmlTags.forEach (tag) ->  html[tag.toUpperCase()] = -> 
+   tagLine.apply (args = [].slice.call arguments)[0], [tag].concat args[1..]
 
-['$each', '$with'].forEach (tag) -> global[tag] = (obj) -> '{{#' + tag[1..] + ' ' + (key = x.keys(obj)[0]) + '}}\n' + x.indent(obj[key]) + '\n{{/' + tag[1..] + '}}'
-['$if', '$unless'].forEach (tag) -> global[tag] = (obj) -> '{{#' + tag[1..] + ' ' + (key = x.keys(obj)[0]) + '}}\n' + x.indent(obj[key]) + ''
-['$else']         .forEach (tag) -> global[tag] = -> "{{##{tag[1..]}}}"
+
+block = (obj) -> x.indent indentStyle fixup obj
+
+do ->
+   #['contentFor']  .forEach (tag) -> router[tag] = (_, obj) -> '{{#' + tag + ' "' + (key = x.theKey obj) + '"}}\n' + block(obj[key]) + '\n{{/' + tag + '}}'
+   ['Each', 'With'].forEach (tag) -> blaze[tag]  = (_, obj) -> '{{#' + tag + ' '  + (key = x.theKey obj) + '}}\n'  + block(obj[key]) + '\n{{/' + tag + '}}'
+   ['If', 'Unless'].forEach (tag) -> blaze[tag]  = (_, obj) -> '{{#' + tag + ' '  + (key = x.theKey obj) + '}}\n'  + block(obj[key]) + ''
+   ['Else']        .forEach (tag) -> blaze[tag]  = (_, obj) -> '{{#' + tag + '}}'
+   ionBlockTags = 'Body Content FooterBar HeaderBar Item List Modal NavView Pane Popover Radio SideMenu SideMenuContent SideMenus Slide SlideBox SubfooterBar SubheaderBar Tabs View'.split ' '
+   ionBlockTags.forEach (tag) -> ionic[tag] = (_, obj) -> 
+      args = [].slice.call arguments
+      switch
+         when x.isObject obj then '{{#' + 'ion' + tag + attributes(obj) + '}}\n' + x.indent(args[2..].join '\n') + '\n{{/' + 'ion' + tag + '}}'
+         else '{{#' + 'ion' + tag + '}}\n' + x.indent(args[1..].join '\n') + '\n{{/' + 'ion' + tag + '}}'
+   ionInsertTags = 'Icon NavBar NavBackButton Popup Tab'.split ' '
+   ionInsertTags.forEach (tag) -> ionic[tag] = (_, obj) -> 
+      switch
+         when x.isObject    obj then '{{> ' + 'ion' + tag + ionAttributes(obj) + '}}'
+         else '{{> ' + 'ion' + tag + '}}'
+
+   sat.Each = (_, obj) ->
+      _.helpers[key = x.theKey obj]().map((a) -> obj[key].replace /_\[(\w+)\]/g, (m, $1) -> a[$1]).join('\n')
+
+   blaze.Include = (_, obj) -> 
+      args = [].slice.call arguments
+      switch                  
+         when x.isObject obj then '{{> ' + (k = x.theKey obj) + includeAttributes(obj[k]) + '}}'
+         when x.isString obj then '{{> ' + obj + '}}'
+         else console.error 'Invalid `include` objuments', obj, args
+
 
 includeAttributes = (obj) -> ' ' + x.keys(obj).map((k) ->  k + '="' + x.parseValue(obj[k]) + '"').join(' ')
-
-global.$include = -> x.reduce((args = [].slice.call arguments), [], (o, arg) -> x.array o, switch                  
-   when x.isObject arg then '{{> ' + (k = x.keys(arg)[0]) + includeAttributes(arg[k]) + '}}'
-   when x.isString arg then '{{> ' + arg + '}}'
-   else console.error 'Invalid `include` arguments', args[0], arg).join '\n'
-
 
 toTemplateLoop = (obj) -> 
    if x.isObject obj then x.reduceKeys obj, {}, (o, k) => switch
       when x.check('id', 'class', k) and isHtmlAttribute obj[k] then x.assign o, toTemplateLoop.call @, tagLine.call @, idClassKey.call(@, k), obj[k]
-      when x.check 'id', 'class', k then x.object o, idClassKey.call(@, k), toTemplateLoop.call @, obj[k]
+      when x.check 'id', 'class', k then x.object o, idClassKey.call(@, k),      toTemplateLoop.call @, obj[k]
       else x.object o, k, toTemplateLoop.call @, obj[k]
    else x.parseValue(obj)
 
@@ -436,9 +464,9 @@ readExports = (f) -> if _index_ is base = path.basename f, coffee_ext then nocac
 
 build = () ->
    settings()
-   spawn_command 'coffee', (if command in ['build', 'deploy'] then '-bc' else '-bcw'), ['-o', build_lib_path, site_coffees.join ' '], site_path
+   #spawn_command 'coffee', (if command in ['build', 'deploy'] then '-bc' else '-bcw'), ['-o', build_lib_path, site_coffees.join ' '], site_path
    mkdir build_client_path
-   @Parts = Parts = x.return (source = site_coffees.reduce ((o, f) -> x.assign o, readExports add site_path, f), {})['Parts']
+   @Parts = global.Parts = x.return (source = site_coffees.reduce ((o, f) -> x.assign o, readExports add site_path, f), {})['Parts']
    @Modules = x.return source['Modules']
    (mkeys = x.keys @Modules).map (n) -> x.module n, @Modules[n] = x.return @Modules[n], x.return @Modules[n]
    x.keys(directives).map (d) -> 
@@ -549,6 +577,10 @@ test = ->
    'client server lib public private resources'.split(' ').forEach (d) ->
       fs.unlink target = add(test_path, d), ->
          fs.existsSync(source = add build_path, d) and fs.symlink source, target, 'dir', -> console.log new Date(), source
+   fs.readdir test_path, (e, list) ->
+      e or list.forEach (f) -> path.extname(f) in ['.coffee', '.js'] and fs.unlink add(test_path, f)
+      fs.readdir site_path, (e, list) ->
+         e or list.forEach (f) -> path.extname(f) in ['.coffee', '.js'] and fs.link add(site_path, f), add(test_path, f), -> console.log new Date(), f
    _meteor_run test_path, '3300'
 
 create_test = ->
