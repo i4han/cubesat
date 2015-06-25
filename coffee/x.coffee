@@ -13,7 +13,6 @@ x.isNumber    = (v) -> 'number'    is typeof v
 x.isBoolean   = (v) -> 'boolean'   is typeof v
 
 x.isScalar = (v) -> x.isNumber(v) or x.isString(v) or x.isBoolean(v)
-x.isDigit  = (v) -> /^[0-9]+$/.test v
 x.isArray  = (o) -> if '[object Array]'  == Object.prototype.toString.call(o) then true else false
 x.isObject = (o) -> if '[object Object]' == Object.prototype.toString.call(o) then true else false
 
@@ -36,6 +35,7 @@ x.isAttrPartKey     = (k) -> x.isString(k) and '$' is k[0]
 x.isFunctionPartKey = (k) -> x.isString(k) and x.isLower k[0]
 x.maybeMustache     = (v) -> x.isString(v) and v.indexOf('{') isnt -1 and v.indexOf('}') isnt -1
 x.maybeHtmlEntity   = (v) -> x.isString(v) and v.indexOf '&#' > -1 and v.indexOf ';' > -1
+x.nameBlazeView = (o) -> x.isBlazeView(o) and 'name' of o and o.name[9..]  # Template.(profile)
 
 x.classOf = Function.prototype.call.bind Object.prototype.toString
 
@@ -57,6 +57,7 @@ checkTable =
    id:         (v) -> /^[a-z]+[0-9]+$/.test(v) and ! /^h[1-6]$/.test v
    class:      (v) -> /^_[a-z]+[a-zA-Z0-9$]*$/.test v
    'id&class': (v) -> /^[a-zA-Z0-9_$]+$/.test(v) and /_/.test v
+   digit:      (v) -> /^[0-9]+$/.test v
 
 x.check = -> 
    args = [].slice.call arguments
@@ -335,7 +336,7 @@ __tideEventKey = (key, fid) ->
    key
 
 x.tideEventKey = (obj, fid) -> x.reduceKeys obj, {}, (o, k) -> 
-   x.object o, k.replace(/(\s+)_\[(#[a-z_]+[0-9]+)\](,|\s+|$)/g, (m, $1, $2, $3) -> $1+fid($2)+$3), obj[k]
+   x.object o, k.replace(/(\s+)\{(#?)([a-z_]+[0-9]+)\}(,|\s+|$)/g, (m, $1, $2, $3, $4) -> $1 + $2 + fid($3) + $4), obj[k]
 
 
 __NotPxDefaultProperties = 'zIndex fontWeight'.split ' '
@@ -374,13 +375,15 @@ x.key2class = (k) -> x.dasherize k[1..]
 x.key2id = (k) -> if k and moduleMethod.id of @ then @[moduleMethod.id] k else ''
 x.key2attribute = (k) -> x.dasherize k
 
-x.module = (name, m) -> #(i = new x.Module(name))._instance i
+x.module = (name, m) -> #(i = new x.Module(name))._instance i 
    m.name  = name
    m.title = m.label = m.label or m.title or x.capitalize name
    m.block = m.block or 'x'
    (m.fn = x.return m.fn, m) and x.keys(m.fn).forEach (f) -> m[f] = m.fn[f] 
-   m[moduleMethod.id] = m.fn and m.fn[moduleMethod.id] or (id) -> if id[0] is '#' then '#' + name + '-' + id[1..] else name + '-' + id
-   #m.template and localTags m.template, m
+   m[moduleMethod.id] = m.fn and m.fn[moduleMethod.id] or (id) -> 
+      uniqueName = name + if m.hash then '-' + m.hash else ''
+      if id[0] is '#' then '#' + uniqueName + '-' + id[1..] else uniqueName + '-' + id
+   
 
 x.isModule = (m) -> x.isObject(m) and moduleMethod.id of m and 'label' of m
 

@@ -77,9 +77,13 @@ blazeAttr = function(_, obj) {
 
   f = cube.attrLookup.bind(null, _);
   o = x.reduceKeys((fo = x.fixup(obj)), {}, function(o, k) {
+    var m;
+
     switch (false) {
       case !(x.check('class', k) && fo[k].indexOf('*') > -1):
         return x.object(o, 'class', mustacheAttr(attributeClass(k, fo[k]), f));
+      case 'local' !== k:
+        return x.object(o, 'id', (x.isBlazeView(_) && (m = window.Modules[x.nameBlazeView(_)]) ? m.Id(fo[k]) : mustacheAttr(fo[k], f)));
       default:
         return x.object(o, k, mustacheAttr(fo[k], f));
     }
@@ -96,7 +100,7 @@ mustache = function(_, a) {
 
   f = cube.viewLookup.bind(null, _);
   if (!x.isArray(a)) {
-    return a;
+    return mustacheAttr(a, f);
   } else {
     return x.reduce(a, [], function(o, v) {
       return x.array(o, mustacheAttr(v, f));
@@ -104,7 +108,7 @@ mustache = function(_, a) {
   }
 };
 
-exports.InstallParts = function(_) {
+exports.Functions.installParts = function(_) {
   return x.eachKeys(_, function(k) {
     return x.isFunctionPartKey(k) && (part[k] = _[k]);
   });
@@ -131,6 +135,12 @@ htmlTags.forEach(function(tag) {
   };
 });
 
+cube.Head = function(_) {
+  return ([].slice.call(arguments)).slice(1).forEach(function(v) {
+    return $('head').append(HTML.toHTML(v));
+  });
+};
+
 ['Each', 'With'].forEach(function(tag) {
   return blaze[tag] = function(_, lookup, func) {
     return Blaze[tag]((function() {
@@ -143,6 +153,7 @@ blaze.Include = function(_, name, o) {
   var args, l;
 
   args = [].slice.call(arguments);
+  console.log(_.lookupTemplate(name));
   switch (false) {
     case (l = args.length) !== 2:
       return Spacebars.include(_.lookupTemplate(name));
@@ -199,6 +210,8 @@ ionTags.forEach(function(tag) {
     }
   };
 });
+
+cube.Style = function(_) {};
 
 /*
    ['contentFor']  .forEach (tag) -> router[tag] = (_, obj) -> Blaze._TemplateWith (-> key = x.theKey obj), (-> Spacebars.include _.lookupTemplate tag), -> x.array obj[key]

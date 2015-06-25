@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.4.71",
+    "version": "0.4.72",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility",
     "main": "js/x.js",

@@ -28,12 +28,14 @@ blazeAttr = (_, obj) ->
    f = cube.attrLookup.bind null, _
    o = x.reduceKeys (fo = x.fixup obj), {}, (o, k) -> switch
       when x.check('class', k) and fo[k].indexOf('*') > -1 then x.object o, 'class', mustacheAttr attributeClass(k, fo[k]), f
+      when 'local' is k
+         x.object o, 'id', (if x.isBlazeView(_) and m = window.Modules[x.nameBlazeView _] then m.Id fo[k] else  mustacheAttr fo[k], f)
       else x.object o, k, mustacheAttr fo[k], f
    if x.keys(o).length is 1 and o[x.theKey o] is '' then x.theKey o else o
 
 mustache = (_, a) -> 
    f = cube.viewLookup.bind null, _
-   if not x.isArray a then a else x.reduce a, [], (o, v) -> x.array o, mustacheAttr v, f
+   if not x.isArray a then mustacheAttr a, f else x.reduce a, [], (o, v) -> x.array o, mustacheAttr v, f
 
 exports.Functions.installParts = (_) -> x.eachKeys _, (k) -> x.isFunctionPartKey(k) and part[k] = _[k]
 
@@ -41,10 +43,14 @@ htmlTags.forEach (tag) -> html[tag] = (_, obj, str) ->
    args = [].slice.call arguments
    if x.isBlazeAttr obj then (if args.length is 2 then HTML[tag] blazeAttr _, obj else HTML[tag] blazeAttr(_, obj), mustache _, args[2..])
    else                      (if args.length is 1 then HTML[tag]()                else HTML[tag]                    mustache _, args[1..])
+
+cube.Head = (_) -> ([].slice.call arguments)[1..].forEach (v) -> $('head').append HTML.toHTML v
+
 ['Each', 'With'].forEach (tag) -> blaze[tag]  = (_, lookup, func) -> 
    Blaze[tag] (-> Spacebars.call _.lookup lookup), func
 blaze.Include = (_, name, o) ->
    args = [].slice.call arguments
+   console.log _.lookupTemplate(name)
    switch 
       when (l = args.length) is 2 then                            Spacebars.include _.lookupTemplate(name)
       when l is 3 and x.isBlazeElement o then                     Spacebars.include _.lookupTemplate(name), -> args[2..]
@@ -60,7 +66,10 @@ ionTags.forEach (tag) -> ionic[tag] = (_, o) ->
       when x.isBlazeElement o then                                Spacebars.include _.lookupTemplate(iTag), -> args[1..]
       when l > 2 then Blaze._TemplateWith (-> blazeAttr _, o), -> Spacebars.include _.lookupTemplate(iTag), -> args[2..]
       else            Blaze._TemplateWith (-> blazeAttr _, o), -> Spacebars.include _.lookupTemplate iTag
-      
+
+cube.Style = (_) -> # canbe module or module.style
+
+
 
 ###
    ['contentFor']  .forEach (tag) -> router[tag] = (_, obj) -> Blaze._TemplateWith (-> key = x.theKey obj), (-> Spacebars.include _.lookupTemplate tag), -> x.array obj[key]

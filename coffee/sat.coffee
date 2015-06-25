@@ -3,6 +3,7 @@
 path     =  require 'path'
 ps       =  require 'ps-node'
 cs       =  require 'coffee-script'
+md5      =  require 'md5'
 eco      =  require 'eco'
 chokidar =  require 'chokidar'
 https    =  require 'https'
@@ -23,12 +24,18 @@ add  = path.join
 home = process.env.HOME
 cwd  = process.cwd()
 
-build_dir      = 'build'
+#build_dir      = 'build'
 _index_        = 'index' 
 coffee_ext     = '.coffee'
 index_coffee   = _index_ + coffee_ext
 package_js     = 'package.js'
 package_json   = 'package.json'
+
+lib_dir      = 'lib'
+client_dir   = 'client'
+public_dir   = 'public'
+packages_dir = 'packages'
+cubesat_name = 'isaac:cubesat'
 
 findRoot = (d) ->
    dir_list = process.cwd().split('/').concat [true]
@@ -45,18 +52,18 @@ dot_cubesat_path = add cubesat_path or home, dot_cubesat
 node_modules     = findRoot('node_modules') or home
 
 tasks =
-   ok:       call: (-> ok()            ), dotsat: 0, test: 0, description: ''
-   test:     call: (-> test()          ), dotsat: 1, test: 0, description: 'Test environment.'
-   init:     call: (-> init()          ), dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)'
-   help:     call: (-> help()          ), dotsat: 0, test: 0, description: 'Help message.'
-   create:   call: (-> create()        ), dotsat: 0, test: 0, description: 'Create a project.' # --repo
-   run:      call: (-> run()           ), dotsat: 1, test: 0, description: 'Run meteor server.'
-   deploy:   call: (-> deploy()        ), dotsat: 1, test: 0, description: 'Deploy to meteor.com.'
-   build:    call: (-> build()         ), dotsat: 1, test: 0, description: 'Build meteor client files.'
-   settings: call: (-> settings()      ), dotsat: 1, test: 0, description: 'Settings'
-   version:  call: (-> version()       ), dotsat: 0, test: 0, description: 'Print sat version'
-   publish:  call: (-> publish()       ), dotsat: 0, test: 0, description: 'Publish Meteor packages.'
-   coffee:   call: (-> coffee_compile()), dotsat: 1, test: 0, description: 'Watching coffee files to complie.'
+   ok:               call: (-> ok()             ), dotsat: 0, test: 0, description: ''
+   test:             call: (-> test()           ), dotsat: 1, test: 0, description: 'Test environment.'
+   init:             call: (-> init()           ), dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)'
+   help:             call: (-> help()           ), dotsat: 0, test: 0, description: 'Help message.'
+   create:           call: (-> create()         ), dotsat: 0, test: 0, description: 'Create a project.' # --repo
+   run:              call: (-> run()            ), dotsat: 1, test: 0, description: 'Run meteor server.'
+   deploy:           call: (-> deploy()         ), dotsat: 1, test: 0, description: 'Deploy to meteor.com.'
+   build:            call: (-> build()          ), dotsat: 1, test: 0, description: 'Build meteor client files.'
+   settings:         call: (-> settings()       ), dotsat: 1, test: 0, description: 'Settings'
+   version:          call: (-> version()        ), dotsat: 0, test: 0, description: 'Print sat version'
+   publish:          call: (-> publish()        ), dotsat: 0, test: 0, description: 'Publish Meteor packages.'
+   coffee:           call: (-> coffee_compile() ), dotsat: 1, test: 0, description: 'Watching coffee files to complie.'
    'mobile-config':  call: (-> mobile_config()  ), dotsat: 0, test: 1, description: 'Create mobile-config.js'
    'update-all':     call: (-> update_all()     ), dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' 
    'create-test':    call: (-> create_test()    ), dotsat: 0, test: 1, description: 'Create test directory.' 
@@ -76,59 +83,57 @@ options =
 if site_path is '' and tasks[command]?.dotsat
    console.log 'fatal: "sat ' + command + '" must run in .sat working directory or its subdirectory.'
    process.exit 1
-site_path and site_coffees = fs.readdirSync(site_path).filter (f) -> coffee_ext is path.extname f
-[home, cubesat_path, dot_cubesat_path, site_path].forEach (_path) ->
-   fs.existsSync(dotenv_path = add _path, '.env') and dotenv.config path:dotenv_path
-build_path        = add site_path, build_dir
-index_coffee_path = add site_path, index_coffee
-build_path and mobile_config_js = add build_path, 'mobile-config.js'
 
-env  = (v) -> (_path = process.env[v]) and _path.replace /^~\//, home + '/'  # read process.env, no use
+if site_path isnt ''
+   site_coffees = fs.readdirSync(site_path).filter (f) -> coffee_ext is path.extname f
+   [home, cubesat_path, dot_cubesat_path, site_path].forEach (_path) ->
+      fs.existsSync(dotenv_path = add _path, '.env') and dotenv.config path:dotenv_path
+   build_path        = site_path
+   index_coffee_path = add site_path, index_coffee
+   build_path and mobile_config_js = add build_path, 'mobile-config.js'
+
+   env  = (v) -> (_path = process.env[v]) and _path.replace /^~\//, home + '/'  # read process.env, no use
+
+   nocacheRequire = (f) -> delete require.cache[f] and require f
+   loadSettings   = (f) -> (fs.existsSync(f) and x.return s = (nocacheRequire f).Settings, x.return s) or {}
+   Settings = loadSettings settings_path = add dot_cubesat_path, 'settings.coffee'                                 # remove?
+   (f = (o) -> x.keys(o).forEach (k) -> if x.isObject o[k] then o[k] = f o[k] else o[k] = x.return o[k])(Settings)
+
+   settings_json =  add site_path,   '.settings.json'
+   nconf.file file: add dot_sat_path, 'config.json'
+
+   @Theme = @Modules = global.Parts = {}
+
+   func2val = (f, _) -> 
+      if x.isObject f
+         x.keys(f).forEach (k) -> f[k] = func2val f[k], _
+         f
+      else if x.isFunction f then x.return f, _ 
+      else f
+
+   init_settings = ->
+      Settings = loadSettings settings_path
+      x.assign Settings, loadSettings index_coffee_path
+      func2val Settings, Settings
+      (site = Settings.site) and (local = Settings.local) and local[site] and x.assign Settings, local[site]
+      @Settings = Settings
+
+   init_settings() # check if command, .sat and index_coffee
+
+   client_path    = add site_path, client_dir
+   lib_path       = add site_path, lib_dir
+
+   style_path   = add site_path, 'style' # where to use? additonal style file
+
+   lib_files    = x.toArray Settings.lib_files
+   my_packages  = x.toArray Settings.packages
+   public_files = x.toArray Settings.public_files
+
 test_dir = switch 
    when with_test = argv['with-test'] and x.isString with_test then with_test 
    when tasks[command]?.test and argv._[0] then argv._[0] 
    else 'test'
 test_path  = if fs.existsSync(test_path = add cubesat_path, test_dir) then test_path else undefined
-
-nocacheRequire = (f) -> delete require.cache[f] and require f
-loadSettings   = (f) -> (fs.existsSync(f) and x.return s = (nocacheRequire f).Settings, x.return s) or {}
-Settings = loadSettings settings_path = add dot_cubesat_path, 'settings.coffee'
-(f = (o) -> x.keys(o).forEach (k) -> if x.isObject o[k] then o[k] = f o[k] else o[k] = x.return o[k])(Settings)
-settings_json =  add build_path,   'settings.json'
-nconf.file file: add dot_sat_path, 'config.json'
-
-@Theme = @Modules = global.Parts = {}
-
-func2val = (f, _) -> 
-   if x.isObject f
-      x.keys(f).forEach (k) -> f[k] = func2val f[k], _
-      f
-   else if x.isFunction f then x.return f, _ 
-   else f
-
-init_settings = ->
-   Settings = loadSettings settings_path
-   x.assign Settings, loadSettings index_coffee_path
-   func2val Settings, Settings
-   (site = Settings.site) and (local = Settings.local) and local[site] and x.assign Settings, local[site]
-   @Settings = Settings
-init_settings() # check if command, .sat and index_coffee
-
-lib_dir      = 'lib'
-client_dir   = 'client'
-public_dir   = 'public'
-packages_dir = 'packages'
-
-build_client_path    = add build_path, client_dir
-build_lib_path       = add build_path, lib_dir
-build_public_path    = add build_path, public_dir
-
-style_path   = add site_path, 'style' # where to use?
-
-cubesat_name = 'isaac:cubesat'
-lib_files    = x.toArray Settings.lib_files
-my_packages  = x.toArray Settings.packages
-public_files = x.toArray Settings.public_files
 
 if test_path
    test_client_path   = add test_path, client_dir
@@ -136,8 +141,8 @@ if test_path
    test_public_path   = add test_path, public_dir
    test_packages_path = add test_path, packages_dir
    cubesat_package_path   = add test_packages_path, cubesat_name
-   package_paths = my_packages.map (p) -> add test_packages_path, p
-
+   #package_paths = my_packages.map (p) -> add test_packages_path, p
+console.log test_path
 __RmCoffee_paths = -> fs.readdirSync(site_path).filter((f) -> coffee_ext is path.extname f).map (f) -> add site_path, f
 
 error  = (e) -> e and (console.error(e) or 1)
@@ -182,10 +187,10 @@ coffee_clean = ->
 
 coffee_watch = (c, js) -> spawn 'coffee', ['-o', js, '-wbc', c], stdio:'inherit'
 
-coffee_compile = ->
-   mkdir build_lib_path
+fix_later__coffee_compile = ->
+   mkdir lib_path
    coffee_dir = [] #[site_path] 
-   js_dir     = [] #[build_lib_path]
+   js_dir     = [] #[lib_path]
    package_paths and package_paths.map (p) ->
       coffee_dir.push add p, 'coffee'
       js_dir    .push add p, 'js'
@@ -267,8 +272,12 @@ directives =
       file: '6.css'
       f: (n, b) -> stylus(b).render() + '\n'
 
-writeBuild = (file, data) ->
-   data.length > 0 and fs.readFile fwrite = add(build_client_path, file), 'utf8', (err, d) ->
+
+writeBuild = (it, data) ->
+   if x.isUndefined(data) or (x.isString(data) and data.length is 0)
+      fs.unlink add(client_path, it.file), (e) -> e or console.log (new Date) + ' ' + it.file + ' has removed'
+   else fs.readFile fwrite = add(client_path, it.file), 'utf8', (err, d) ->
+      data = (it.header || '') + data + (it.footer || '')
       (!d? or data != d) and fs.writeFile fwrite, data, (e) -> console.log new Date(), fwrite
 
 fixup = (v) -> switch
@@ -407,15 +416,14 @@ global.ionic  = {}
 global.sat    = {}
 global.html   = {}
 
-htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
-
-htmlTags.forEach (tag) ->  html[tag.toUpperCase()] = -> 
-   tagLine.apply (args = [].slice.call arguments)[0], [tag].concat args[1..]
-
-
 block = (obj) -> x.indent indentStyle fixup obj
 
-do ->
+site_path and do ->
+   htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
+
+   htmlTags.forEach (tag) ->  html[tag.toUpperCase()] = -> 
+      tagLine.apply (args = [].slice.call arguments)[0], [tag].concat args[1..]
+
    #['contentFor']  .forEach (tag) -> router[tag] = (_, obj) -> '{{#' + tag + ' "' + (key = x.theKey obj) + '"}}\n' + block(obj[key]) + '\n{{/' + tag + '}}'
    ['Each', 'With'].forEach (tag) -> blaze[tag]  = (_, obj) -> '{{#' + tag + ' '  + (key = x.theKey obj) + '}}\n'  + block(obj[key]) + '\n{{/' + tag + '}}'
    ['If', 'Unless'].forEach (tag) -> blaze[tag]  = (_, obj) -> '{{#' + tag + ' '  + (key = x.theKey obj) + '}}\n'  + block(obj[key]) + ''
@@ -464,21 +472,21 @@ readExports = (f) -> if _index_ is base = path.basename f, coffee_ext then nocac
 
 build = () ->
    settings()
-   #spawn_command 'coffee', (if command in ['build', 'deploy'] then '-bc' else '-bcw'), ['-o', build_lib_path, site_coffees.join ' '], site_path
-   mkdir build_client_path
+   #spawn_command 'coffee', (if command in ['build', 'deploy'] then '-bc' else '-bcw'), ['-o', lib_path, site_coffees.join ' '], site_path
+   mkdir client_path
    @Parts = global.Parts = x.return (source = site_coffees.reduce ((o, f) -> x.assign o, readExports add site_path, f), {})['Parts']
    @Modules = x.return source['Modules']
    (mkeys = x.keys @Modules).map (n) -> x.module n, @Modules[n] = x.return @Modules[n], x.return @Modules[n]
    x.keys(directives).map (d) -> 
-      writeBuild (it = directives[d]).file, (x.return(it.header) || '') + 
+      writeBuild (it = directives[d]),  
          mkeys.map((n) -> 
             @Modules[n][d] = x.return @Modules[n][d], @Modules[n]
             (b = toTemplate.call(@Modules[n], d)) and it.f.call @, n, b
-         ).filter((o) -> o?).join('') + (x.return(it.footer) || '')
+         ).filter((o) -> o?).join '' 
    count = 0
    mkeys.forEach (n) -> 
-      @Modules[n].style and api.add toStyle.call @Modules[n], 'style'
-      ++count is mkeys.length and writeBuild 'absurd.css', api.compile()
+      @Modules[n][key = 'style$'] and api.add toStyle.call @Modules[n], key
+      ++count is mkeys.length and writeBuild file: 'absurd.css', api.compile()
 
 gitpass = ->
    prompt.message = 'github'
@@ -515,11 +523,8 @@ meteor_create = (dir, fn) ->
 
 create = ->
    x.check('name', site = argv._[0]) or console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) or process.exit 1
-   fs.mkdir site, (e) ->
-      e and (console.error("error: Can not create", site) or process.exit 1)
-      (spawn_command 'git', 'clone', [github_url(argv.repo or 'i4han/sat-init'), '.'], site).on 'exit', (code) ->
-         code and (console.error('error: Git exited with an error.') or process.exit 1)
-         fs.existsSync('./build/.meteor') or meteor_create build_dir
+   (spawn_command 'git', 'clone', [github_url(argv.repo or 'i4han/sat-init'), site]).on 'exit', (code) ->
+      code and (console.error('error: Git exited with an error.') or process.exit 1)
 
 incVersion = (data, re) ->
    data.match re
@@ -580,7 +585,7 @@ test = ->
    fs.readdir test_path, (e, list) ->
       e or list.forEach (f) -> path.extname(f) in ['.coffee', '.js'] and fs.unlink add(test_path, f)
       fs.readdir site_path, (e, list) ->
-         e or list.forEach (f) -> path.extname(f) in ['.coffee', '.js'] and fs.link add(site_path, f), add(test_path, f), -> console.log new Date(), f
+         e or list.forEach (f) -> path.extname(f) in ['.coffee'] and fs.link add(site_path, f), add(test_path, f), -> console.log new Date(), f
    _meteor_run test_path, '3300'
 
 create_test = ->

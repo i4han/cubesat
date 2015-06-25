@@ -44,10 +44,6 @@ x.isScalar = function(v) {
   return x.isNumber(v) || x.isString(v) || x.isBoolean(v);
 };
 
-x.isDigit = function(v) {
-  return /^[0-9]+$/.test(v);
-};
-
 x.isArray = function(o) {
   if ('[object Array]' === Object.prototype.toString.call(o)) {
     return true;
@@ -129,6 +125,10 @@ x.maybeHtmlEntity = function(v) {
   return x.isString(v) && v.indexOf('&#' > -1 && v.indexOf(';' > -1));
 };
 
+x.nameBlazeView = function(o) {
+  return x.isBlazeView(o) && 'name' in o && o.name.slice(9);
+};
+
 x.classOf = Function.prototype.call.bind(Object.prototype.toString);
 
 x.isVisible = function(v) {
@@ -187,6 +187,9 @@ checkTable = {
   },
   'id&class': function(v) {
     return /^[a-zA-Z0-9_$]+$/.test(v) && /_/.test(v);
+  },
+  digit: function(v) {
+    return /^[0-9]+$/.test(v);
   }
 };
 
@@ -893,8 +896,8 @@ __tideEventKey = function(key, fid) {
 
 x.tideEventKey = function(obj, fid) {
   return x.reduceKeys(obj, {}, function(o, k) {
-    return x.object(o, k.replace(/(\s+)_\[(#[a-z_]+[0-9]+)\](,|\s+|$)/g, function(m, $1, $2, $3) {
-      return $1 + fid($2) + $3;
+    return x.object(o, k.replace(/(\s+)\{(#?)([a-z_]+[0-9]+)\}(,|\s+|$)/g, function(m, $1, $2, $3, $4) {
+      return $1 + $2 + fid($3) + $4;
     }), obj[k]);
   });
 };
@@ -973,10 +976,13 @@ x.module = function(name, m) {
     return m[f] = m.fn[f];
   });
   return m[moduleMethod.id] = m.fn && m.fn[moduleMethod.id] || function(id) {
+    var uniqueName;
+
+    uniqueName = name + (m.hash ? '-' + m.hash : '');
     if (id[0] === '#') {
-      return '#' + name + '-' + id.slice(1);
+      return '#' + uniqueName + '-' + id.slice(1);
     } else {
-      return name + '-' + id;
+      return uniqueName + '-' + id;
     }
   };
 };

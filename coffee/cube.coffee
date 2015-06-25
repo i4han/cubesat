@@ -23,7 +23,7 @@ mongoClient = (cs, that) -> x.keys(cs).filter((c) -> c not in mongo.connected).m
 Meteor.startup ->
     Parts   = x.return exports.Parts
     Modules = x.return exports.Modules
-    x.eachKeys exports, (k) -> x.isLower(k) and x.assign Modules, x.return exports[f].Modules
+    x.eachKeys exports, (k) -> x.isLower(k) and x.assign Modules, x.return exports[k].Modules
     x.keys(@Modules = Modules).map (n) -> x.module.call @, n, Modules[n] = x.return Modules[n], x.return Modules[n]
     if Meteor.isServer
         x.isEmpty(collections) or mongoServer collections
@@ -41,6 +41,7 @@ Meteor.startup ->
             _.collections and mongoClient x.return(_.collections, _), _
             _.onStartup   and _.onStartup.call _
             _.path        and Router.route n, x.return path: _.path #Router.route _.path#, name: n, template: n
+            _.style       and cube.Style _
             _.on$Ready    and $ ($) -> _.on$Ready.call _
             _.onDeviceReady and document.addEventListener 'deviceready', _.onDeviceReady
             _.template    and Template[n] = new Template 'Template.' + n, _.template
