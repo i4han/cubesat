@@ -10,7 +10,7 @@ Router.route('/-/:shorten', (function() {
         default:
           return Meteor.settings.shortens[this.params.shorten] || 'path-not-found';
       }
-    }).call(this)) + (this.params.query ? x.addQuery(this.params.query) : '')
+    }).call(this)) + (this.params.query ? __.addQuery(this.params.query) : '')
   });
   return this.response.end();
 }), {
@@ -25,7 +25,7 @@ Router.route('/forward/:target', (function() {
     Location: (function() {
       switch (v[1]) {
         case 'oauth':
-          return x.oauth(v[0]);
+          return __.oauth(v[0]);
       }
     })()
   });

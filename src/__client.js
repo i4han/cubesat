@@ -1,5 +1,5 @@
-
-x.$.getStyle = function() {
+/*
+__.$.getStyle = function() {
     var dom = this.get(0);
     var style;
     var returns = {};
@@ -25,12 +25,12 @@ x.$.getStyle = function() {
     return this.css();
 };
 
-x.$.copyStyle = function(source) {
+__.$.copyStyle = function(source) {
   var styles = source.getStyle();
   this.css(styles);
 };
 
-x.$.editable = function() {
+__.$.editable = function() {
     var that = this,
         $inputBox = $('<input type="text"></input>').css('min-width', that.width()),
         submitChanges = function() {
@@ -60,9 +60,9 @@ x.$.editable = function() {
         that.hide();
         $(document).click(submitChanges);
     });
-    return that;    
+    return that;
 };
-
+*/
 
 // google map
 
@@ -71,7 +71,7 @@ x.$.editable = function() {
 x.gmapInit = function (options) {
   var gmaps = google.maps
   var mapOptions = ! x.isEmpty(options) ? options : {
-    disableDefaultUI: true, 
+    disableDefaultUI: true,
     center: new gmaps.LatLng(53.52, -113.5),
     zoom: 12
   };
@@ -133,7 +133,7 @@ x.gmapInit = function (options) {
 
   // Sets a listener on a radio button to change the filter type on Places
   // Autocomplete.
-  
+
   //function setupClickListener(id, types) {
   //  var radioButton = document.getElementById(id);
   //  gmaps.event.addDomListener(radioButton, 'click', function() {
@@ -145,7 +145,7 @@ x.gmapInit = function (options) {
   //setupClickListener('changetype-address', ['address']);
   //setupClickListener('changetype-establishment', ['establishment']);
   //setupClickListener('changetype-geocode', ['geocode']);
-  
+
 }
 */
 
@@ -187,24 +187,24 @@ x.gmapInit = function (options) {
 
     var touch = event.originalEvent.changedTouches[0],
         simulatedEvent = document.createEvent('MouseEvents');
-    
+
     // Initialize the simulated mouse event using the touch event's coordinates
     simulatedEvent.initMouseEvent(
       simulatedType,    // type
-      true,             // bubbles                    
-      true,             // cancelable                 
-      window,           // view                       
-      1,                // detail                     
-      touch.screenX,    // screenX                    
-      touch.screenY,    // screenY                    
-      touch.clientX,    // clientX                    
-      touch.clientY,    // clientY                    
-      false,            // ctrlKey                    
-      false,            // altKey                     
-      false,            // shiftKey                   
-      false,            // metaKey                    
-      0,                // button                     
-      null              // relatedTarget              
+      true,             // bubbles
+      true,             // cancelable
+      window,           // view
+      1,                // detail
+      touch.screenX,    // screenX
+      touch.screenY,    // screenY
+      touch.clientX,    // clientX
+      touch.clientY,    // clientY
+      false,            // ctrlKey
+      false,            // altKey
+      false,            // shiftKey
+      false,            // metaKey
+      0,                // button
+      null              // relatedTarget
     );
 
     // Dispatch the simulated event to the target element
@@ -293,7 +293,7 @@ x.gmapInit = function (options) {
    * original mouse event handling methods.
    */
   mouseProto._mouseInit = function () {
-    
+
     var self = this;
 
     // Delegate the touch handlers to the widget's element
@@ -311,7 +311,7 @@ x.gmapInit = function (options) {
    * Remove the touch event handlers
    */
   mouseProto._mouseDestroy = function () {
-    
+
     var self = this;
 
     // Delegate the touch handlers to the widget's element
