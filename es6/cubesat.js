@@ -20,8 +20,14 @@ class Module {
    local(id) {
       let uniqueName = this.name() + (this.property.hash ? '-' + this.property.hash : '')
       return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
-   template(template) {
-      return typeof template === 'undefined' ? this._template : __.object(this, '_template', template) }
+   template(t) {
+      console.log(this.property.name + ' from template')
+      console.log(typeof t === 'undefined')
+      console.log(t)
+      console.log('_template')
+      console.log(this._template)
+      return typeof t === 'undefined' ? this._template : __.object(this, '_template', t)
+   }
    init(f) {
      this._init = f
      return this }

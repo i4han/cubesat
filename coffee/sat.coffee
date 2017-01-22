@@ -580,6 +580,7 @@ deploy = ->
 
 test = ->
    build()
+   console.log test_path
    test_path or console.error('error: Can not find cubesat home.') or process.exit 1
    'client server lib public private resources'.split(' ').forEach (d) ->
       fs.unlink target = add(test_path, d), ->

@@ -44,8 +44,8 @@ Meteor.startup ->
             _.onstartup     and _.onstartup.call _
             _.property.path and Router.route n, path: _.property.path  #Router.route _.path#, name: n, template: n
             _.style         and cube.Style _
-            _.template()    and Template[n] = new Template 'Template.' + n, _.template()
-            _.event         and (console.log(n) or Template[n].events __.tideEventKey _.event, __.key2id.bind _) #_[__.f.id]
+            _.template()    and (console.log('Template.' + n, _.template()) or Template[n] = new Template 'Template.' + n, _.template()) # template() returns _template
+            _.event         and (console.log(n, _, Template[n]) or Template[n].events __.tideEventKey _.event, __.key2id.bind _) #_[__.f.id]
             _.helper        and Template[n].helpers _.helper    # @data context
             'onCreated onRendered onDestroyed'.split(' ').forEach (d) -> _[d.toLowerCase()] and Template[n][d] _[d.toLowerCase()]
         Router.configure layoutTemplate: 'layout'

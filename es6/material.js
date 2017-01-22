@@ -12,9 +12,7 @@ cube.lookupInAttr = (_, v) => Spacebars.mustache(_.lookup(v))
 const htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.toUpperCase().split(' ')
 let attributeClass = (key, value) => __.isString(value) ? value.replace(/\*/g, __.key2class(key)) : __.key2class(key)
 
-const htmlEntities = {
-  '123': '{',
-  '125': '}' }
+const htmlEntities = { '123': '{', '125': '}' }
 
 let displayValue = (v) =>
   __.maybeHtmlEntity(v) ? v.replace(/&#([0-9]{3});/g, (m, $1) => $1 in htmlEntities ? htmlEntities[$1] : m) : v
@@ -91,15 +89,15 @@ blaze.Include = (_, name, ...a) =>
   a.length > 1 ? cube.includeAttrBlock(_, name, a[0], () => a.slice(1)) :
     cube.includeAttr(_, name, a[0])
 
-;['Each', 'With'].forEach((tag) =>
+;['Each', 'With'].forEach(tag =>
   blaze[tag] = (_, lookup, func) =>
     Blaze[tag](() => cube.lookup(_, lookup), func))
 
-;['If'].forEach((tag) =>
+;['If'].forEach(tag =>
   blaze[tag] = (_, lookup, f_then, f_else) =>
     Blaze[tag](() => cube.lookup(_, lookup), f_then, f_else))
 
-let idclassKey = function(k) {
+let idclassKey = function(k) {  // don't use arrow function 'this'
   switch (false) {
     case !__.check('local', k):
       return '#' + __.key2id.call(this, __.getLocal(k));
