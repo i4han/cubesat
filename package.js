@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor in coffeescript.',
-    version: '0.4.102',
+    version: '0.4.104',
     git: 'https://github.com/i4han/cubesat.git',
     documentation: 'README.md'
 });
@@ -11,7 +11,7 @@ Package.on_use( function (api) {
     lang === 'coffee' && api.use('coffeescript@1.0.6')
     api.use('ecmascript@0.1.6')
     api.use('jquery@1.0.1')
-    api.use('iron:router@1.0.7')
+    api.use('iron:router@1.1.1')
     api.use('isaac:underscore2@0.4.14')
     api.use('isaac:jquery-x@0.0.5')
     api.use('isaac:style-query@0.0.3')
