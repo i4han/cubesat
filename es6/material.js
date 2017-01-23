@@ -89,13 +89,8 @@ blaze.Include = (_, name, ...a) =>
   a.length > 1 ? cube.includeAttrBlock(_, name, a[0], () => a.slice(1)) :
     cube.includeAttr(_, name, a[0])
 
-;['Each', 'With'].forEach(tag =>
-  blaze[tag] = (_, lookup, func) =>
-    Blaze[tag](() => cube.lookup(_, lookup), func))
-
-;['If'].forEach(tag =>
-  blaze[tag] = (_, lookup, f_then, f_else) =>
-    Blaze[tag](() => cube.lookup(_, lookup), f_then, f_else))
+;['Each', 'With'].forEach(tag => blaze[tag] = (_, lookup, func) => Blaze[tag](() => cube.lookup(_, lookup), func))
+;['If'].forEach(tag => blaze[tag] = (_, lookup, f_then, f_else) => Blaze[tag](() => cube.lookup(_, lookup), f_then, f_else))
 
 let idclassKey = function(k) {  // don't use arrow function 'this'
   switch (false) {
