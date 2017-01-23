@@ -42,3 +42,18 @@ Meteor.startup(() => {
       ;(v = _.helper)        &&  Template[n].helpers(v)
       'onCreated onRendered onDestroyed'.split(' ').forEach(d => _[d.toLowerCase()] && Template[n][d](_[d.toLowerCase()])) })
     Router.configure({layoutTemplate: 'layout'}) } })
+
+Router.route('/-/:shorten', (function() {
+  this.response.writeHead(301, {
+    Location: (() => {
+      switch (this.params.shorten) {
+        case 'flags.png':
+          return '/packages/isaac_intl-tel-input/intl-tel-input/build/img/flags.png'
+        case 'flags@2x.png':
+          return '/packages/isaac_intl-tel-input/intl-tel-input/build/img/flags@2x.png'
+        default:
+          return Meteor.settings.shortens[this.params.shorten] || 'path-not-found' }
+    }) + (this.params.query ? __.addQuery(this.params.query) : '')
+  })
+  this.response.end()
+}), {where: 'server'})

@@ -1,5 +1,5 @@
 
-
+###
 Router.route '/-/:shorten', (->
 	@response.writeHead 301, Location: (switch @params.shorten
 		when 'flags.png'    then '/packages/isaac_intl-tel-input/intl-tel-input/build/img/flags.png'
@@ -8,7 +8,7 @@ Router.route '/-/:shorten', (->
 		if @params.query then __.addQuery @params.query else ''
 	@response.end()
 ),  where: 'server'
-
+###
 Router.route '/forward/:target', (->
 	v = @params.target.split '.'
 	@response.writeHead 301, Location: switch v[1]
