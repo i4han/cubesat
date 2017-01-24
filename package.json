@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.5.50",
+    "version": "0.6.0",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility and library",
     "main": "js/cubesat.js",
@@ -9,7 +9,7 @@
         "js/sat.js"
     ],
     "bin": { "sat": "./js/sat.js" },
-    "scripts": {
+    "__scripts": {
         "prepublish": "coffee -bc -o js coffee && ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
