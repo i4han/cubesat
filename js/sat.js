@@ -46,7 +46,7 @@ const site_path    = findRoot(dot_sat)
 const dot_sat_path = add(site_path, dot_sat)
 const cubesat_path = findRoot(dot_cubesat)
 const dot_cubesat_path = add(cubesat_path || home, dot_cubesat) // should be error? .cubesat doesn't exist?
-const node_modules = findRoot('node_modules') || home
+const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || home
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules]
 const tasks = {
   ok:       { call: () => ok(),       dotsat: 0, test: 0, description: 'ok' },
@@ -56,7 +56,7 @@ const tasks = {
   create:   { call: () => create(),   dotsat: 0, test: 0, description: 'Create a project.' },
   run:      { call: () => run(),      dotsat: 1, test: 0, description: 'Run meteor server.' },
   deploy:   { call: () => deploy(),   dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
-  build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
+  //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
   settings: { call: () => settings(), dotsat: 1, test: 0, description: 'Settings' },
   version:  { call: () => version(),  dotsat: 0, test: 0, description: 'Print sat version' },
   publish:  { call: () => publish(),  dotsat: 0, test: 0, description: 'Publish Meteor packages.' },
@@ -85,7 +85,7 @@ const error_quit = error => {
 }
 
 if (! command) command = 'help'  // empty command means 'sat help'
-const task_command = tasks[command]
+const task_command = tasks[__.camelize(command)]
 
 // error handling
 task_command || error_quit(`fatal: Unknown command "${command}"`)
@@ -98,7 +98,7 @@ var cd, client_path, codeLine, codeStr, coffee, coffee_clean, coffee_watch, coll
 var compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
 var deploy, directives, env, error
 var f, findRoot, fix_later__coffee_compile, fixup, func2val
-var getVersion, github_file, github_url, gitpass
+var github_file, github_url, gitpass
 var help, htmlAttributes, htmlNoEndTags
 var idClassKey, incVersion, includeAttributes, indentStyle, indexSettings, init, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
 var lib_files, lib_path, loadSettings
@@ -111,7 +111,7 @@ var seperators, settings, settings_json, settings_path, spawn_command, strOrObj,
 var tagLine, task, test, test_client_path, test_dir, test_lib_path, test_packages_path, test_path, test_public_path, toStyle
 var update_all, version, with_test, writeBuild
 
-let build_path, index_js_path
+let build_path, index_js_path, a_path, a_module
 
 if (site_path.length) {
   // site_coffees = fs.readdirSync(site_path).filter(f => coffee_ext === path.extname(f))
@@ -124,17 +124,10 @@ if (site_path.length) {
   build_path = site_path
   index_js_path = add(site_path, index_js);
   build_path && (mobile_config_js = add(build_path, 'mobile-config.js'));
-  env = function(v) {
-    var _path;
-    return (_path = process.env[v]) && _path.replace(/^~\//, home + '/');
-  };
-  nocacheRequire = function(f) {
-    return delete require.cache[f] && require(f);
-  };
-  loadSettings = function(f) {
-    var s;
-    return (fs.existsSync(f) && __["return"](s = (nocacheRequire(f)).Settings, __["return"](s))) || {};
-  };
+  env = v => (a_path = process.env[v]) && a_path.replace(/^~\//, home + '/')
+  nocacheRequire = f => delete require.cache[f] && require(f)
+  loadSettings   = f =>
+    (fs.existsSync(f) && __.return(a_module = (nocacheRequire(f)).Settings, __.return(a_module))) || {}
   indexSettings = function(f) {
     var s;
     return (fs.existsSync(f) && __["return"](s = (nocacheRequire(f)).setting, __["return"](s))) || {};
@@ -1067,9 +1060,7 @@ incVersion = function(data, re) {
   return data.replace(re, "$1" + version + "$3");
 };
 
-getVersion = function(file, re) {
-  return fs.readFileSync(file, 'utf8').match(re)[2];
-};
+const getVersion = (file, re) => fs.readFileSync(file, 'utf8').match(re)[2]
 
 readWrite = function(file, func) {
   return fs.readFile(file, 'utf8', function(e, data) {
@@ -1089,7 +1080,7 @@ _publish = function(file, re) {
 };
 
 rePublish = {
-  npm: /("version"\s*:\s*['"])([0-9.]+)(['"]\s*,)/m,
+  npm:    /("version"\s*:\s*['"])([0-9.]+)(['"]\s*,)/m,
   meteor: /(version\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
 };
 
@@ -1154,7 +1145,7 @@ deploy = function() {
 };
 
 test = function() {
-  build();
+  //build();
   console.log(test_path);
   test_path || console.error('error: Can not find cubesat home.') || process.exit(1);
   'client server lib public private resources'.split(' ').forEach(function(d) {
@@ -1212,97 +1203,13 @@ install_mobile = function() {
   }))();
 };
 
-version = function() {
-  return console.log('version: ' + getVersion(add(node_modules, 'node_modules', 'cubesat', 'package.json'), rePublish.npm));
-};
+version = () =>
+    console.log('version: ' + getVersion(add(node_modules, 'node_modules', 'cubesat', 'package.json'), rePublish.npm))
 
-help = function() {
-  return __.keys(tasks).map(function(k) {
-    return console.log('  ', (__.dasherize(k) + Array(15).join(' ')).slice(0, 16), tasks[k].description);
-  });
-};
+help = () => __.keys(tasks).map(k =>
+    console.log('  ', (__.dasherize(k) + Array(15).join(' ')).slice(0, 16), tasks[k].description))
 
-init = function() {
-  return '';
-};
+init = () => ''
+ok   = () => console.log(argv)
 
-ok = function() {
-  return console.log(argv);
-};
-
-(task = tasks[__.camelize(command)]) && task.call();
-
-task || help();
-
-__start_up = function() {
-  coffee_alone();
-  lib_paths.concat([index_js_path]).map(function(f) {
-    return chokidar.watch(f).on('change', function() {
-      return build();
-    });
-  });
-  hold_watch(2);
-  package_paths.map(function(p) {
-    return chokidar.watch(p).on('change', function(f) {
-      var dir_f;
-      if (updated < process.hrtime()[0]) {
-        nconf.set('updated_packages', ((nconf.get('updated_packages')) || []).concat([dir_f = path.dirname(f)]).filter(function(v, i, a) {
-          return a.indexOf(v) === i;
-        }));
-        return console.log(new Date(), 'Changed', f);
-      }
-    });
-  });
-  return commands();
-};
-
-__commands = function() {
-  var rl;
-  rl = require('readline').createInterface(process.stdin, process.stdout);
-  rl.setPrompt('');
-  return rl.on('line', function(line) {
-    switch ((line = line.replace(/\s{2,}/g, ' ').trim().split(' '))[0]) {
-      case '.':
-        return console.log('hi');
-      case 'build':
-        return build();
-      case 'time':
-        return console.log(new Date());
-      case 'publish':
-        return publish();
-      case 'update':
-        return meteor_update();
-      case 'settings':
-        return settings();
-      case 'coffee':
-        switch (line[1]) {
-          case 'alone':
-            return coffee_alone();
-          case 'clean':
-            return coffee_clean();
-        }
-        break;
-      case 'meteor':
-        return start_meteor();
-      case 'packages':
-        console.log(nconf.get('updated_packages'));
-        return nconf.save();
-      case 'get':
-        return console.log(nconf.get(line[1]));
-      case 'set':
-        return nconf.set(line[1], line[2]);
-      case 'stop':
-        return 'meteor' === line[1] && stop_meteor();
-      case '':
-        return '';
-      default:
-        return console.log('?');
-    }
-  }).on('close', function() {
-    console.log('bye!');
-    coffee_clean();
-    nconf.save();
-    rl.close();
-    return process.exit(1);
-  });
-};
+task_command.call()
