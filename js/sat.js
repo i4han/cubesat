@@ -6,16 +6,15 @@ const ps       = require('ps-node')
 const cs       = require('coffee-script')
 const md5      = require('md5')
 const eco      = require('eco')
-const chokidar = require('chokidar')
 const https    = require('https')
-const jade     = require('jade')
 const stylus   = require('stylus')
 const async    = require('async')
 const dotenv   = require('dotenv')
 const nconf    = require('nconf')
 const api      = require('absurd')()
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
-const __       = require('underscore2').__
+//const __       = require('underscore2').__
+const __       = require('cubesat')
 
 cs.register()
 let command      = process.argv[2]
@@ -47,6 +46,7 @@ const dot_sat_path = add(site_path, dot_sat)
 const cubesat_path = findRoot(dot_cubesat)
 const dot_cubesat_path = add(cubesat_path || home, dot_cubesat) // should be error? .cubesat doesn't exist?
 const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || home
+const paths2test   = 'client server lib public private resources'.split(' ')
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules]
 const tasks = {
   ok:       { call: () => ok(),       dotsat: 0, test: 0, description: 'ok' },
@@ -81,8 +81,7 @@ const options = {
 
 const error_quit = error => {
   console.log(error)
-  process.exit(1)
-}
+  process.exit(1) }
 
 if (! command) command = 'help'  // empty command means 'sat help'
 const task_command = tasks[__.camelize(command)]
@@ -181,7 +180,7 @@ test_dir = (function() {
   switch (false) {
     case !(with_test = argv['with-test'] && __.isString(with_test)):
       return with_test;
-    case !(((ref2 = tasks[command]) != null ? ref2.test : void 0) && argv._[0]):
+    case !((task_command != null ? task_command.test : void 0) && argv._[0]):
       return argv._[0];
     default:
       return 'test';
@@ -368,13 +367,9 @@ mc_obj = function(o) {
 };
 
 mcTable = {
-  setPreference: {
-    list: true
-  },
-  configurePlugin: {
-    list: true
-  }
-};
+  setPreference:   { list: true },
+  configurePlugin: { list: true }
+}
 
 strOrObj = function(o) {
   if (__.isObject(o)) {
@@ -416,7 +411,7 @@ coffee = function(data) {
     bare: true
   });
 };
-
+/*
 directives = {
   jade: {
     file: '1.jade',
@@ -486,7 +481,7 @@ directives = {
     }
   }
 };
-
+*/
 writeBuild = function(it, data) {
   var fwrite;
   if (__.isUndefined(data) || (__.isString(data) && data.length === 0)) {
@@ -804,13 +799,10 @@ _tagLine = function(tag, obj, str) {
   }
 };
 
-global.blaze = {};
-
-global.ionic = {};
-
-global.sat = {};
-
-global.html = {};
+global.blaze = {}
+global.ionic = {}
+global.sat   = {}
+global.html  = {}
 
 block = function(obj) {
   return __.indent(indentStyle(fixup(obj)));
@@ -1042,7 +1034,7 @@ meteor_create = function(dir, fn) {
 create = function() {
   var site;
   __.check('name', site = argv._[0]) || console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) || process.exit(1);
-  return (spawn_command('git', 'clone', [github_url(argv.repo || 'i4han/sat-init'), site])).on('exit', function(code) {
+  return (spawn_command('git', 'clone', [github_url(argv.repo || 'i4han/sat-spark'), site])).on('exit', function(code) {
     return code && (console.error('error: Git exited with an error.') || process.exit(1));
   });
 };
@@ -1107,9 +1099,9 @@ npm_install = function() {
 };
 
 update_all = function() {
-  meteor_update();
-  return npm_update();
-};
+  meteor_update()
+  npm_update()
+}
 
 npm_refresh = function() {
   return npm_publish().on('exit', function(code) {
@@ -1133,46 +1125,36 @@ coffee_watch = function(c, js) {
   });
 };
 
-run = function() {
-  // build();
-  _meteor_run()
-  argv['with-test'] && test()
-};
+run    = () => _meteor_run(), argv['with-test'] && test()
+deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
 
-deploy = function() {
-  // build();
-  return spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path);
-};
-
-test = function() {
-  //build();
-  console.log(test_path);
-  test_path || console.error('error: Can not find cubesat home.') || process.exit(1);
-  'client server lib public private resources'.split(' ').forEach(function(d) {
+test   = () => {
+  test_path || error_quit('error: Can not find test_path.')
+  console.log(test_path)
+  paths2test.forEach(d => {
     var target;
     return fs.unlink(target = add(test_path, d), function() {
       var source;
-      return fs.existsSync(source = add(build_path, d)) && fs.symlink(source, target, 'dir', function() {
-        return console.log(new Date(), source);
-      });
+      return fs.existsSync(source = add(build_path, d)) && fs.symlink(source, target, () =>
+        console.log(new Date(), source) )
     });
   });
   fs.readdir(test_path, function(e, list) {
     e || list.forEach(function(f) {
       var ref2;
-      return ((ref2 = path.extname(f)) === '.coffee' || ref2 === '.js') && fs.unlink(add(test_path, f));
-    });
+      return ((ref2 = path.extname(f)) === '.coffee' || ref2 === '.js') && fs.unlink(add(test_path, f))
+    })
     return fs.readdir(site_path, function(e, list) {
       return e || list.forEach(function(f) {
         var ref2;
-        return ((ref2 = path.extname(f)) === '.coffee') && fs.link(add(site_path, f), add(test_path, f), function() {
+        return ((ref2 = path.extname(f)) === '.js') && fs.link(add(site_path, f), add(test_path, f), function() {
           return console.log(new Date(), f);
         });
       });
     });
   });
-  return _meteor_run(test_path, '3300');
-};
+  _meteor_run(test_path, '3300')
+}
 
 create_test = function() {
   (test_path = argv._[0]) || console.error("error: Test directory name is missing.") || process.exit(1);
@@ -1191,23 +1173,16 @@ create_test = function() {
   }
 };
 
-install_mobile = function() {
-  var wt;
+install_mobile = () => {
+  let wt
   !site_path && !((wt = argv['with-test']) && test_path) && console.error("error: Run in .sat working directory or specify valid test name." || process.exit(1));
-  return (['install-sdk', 'add-platform'].reduce((function(f, c) {
-    return function() {
-      return (spawn_command('meteor', c, ['ios'], wt ? test_path : build_path)).on('exit', f);
-    };
-  }), function() {
-    return console.log(new Date());
-  }))();
-};
+  ;(['install-sdk', 'add-platform'].reduce(((f, c) =>
+    () => (spawn_command('meteor', c, ['ios'], wt ? test_path : build_path)).on('exit', f)),
+    () => console.log(new Date()) ))()
+}
 
-version = () =>
-    console.log('version: ' + getVersion(add(node_modules, 'node_modules', 'cubesat', 'package.json'), rePublish.npm))
-
-help = () => __.keys(tasks).map(k =>
-    console.log('  ', (__.dasherize(k) + Array(15).join(' ')).slice(0, 16), tasks[k].description))
+version = () => spawn_command('npm', 'info', ['cubesat', 'version'], build_path)
+help = () => __.keys(tasks).map(k => console.log('  ', (__.dasherize(k) + Array(15).join(' ')).slice(0, 16), tasks[k].description))
 
 init = () => ''
 ok   = () => console.log(argv)

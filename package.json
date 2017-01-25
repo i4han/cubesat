@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.6.3",
+    "version": "0.6.19",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility and library",
     "main": "js/cubesat.js",
@@ -20,8 +20,6 @@
     "dependencies": {
         "coffee-script": "*",
         "stylus": "*",
-        "chokidar": "*",
-        "jade": "*",
         "ps-node": "*",
         "eco": "*",
         "async": "*",
