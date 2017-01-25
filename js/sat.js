@@ -13,7 +13,6 @@ const dotenv   = require('dotenv')
 const nconf    = require('nconf')
 const api      = require('absurd')()
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
-//const __       = require('underscore2').__
 const __       = require('cubesat')
 
 cs.register()
