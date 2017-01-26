@@ -297,7 +297,7 @@ fix_later__coffee_compile = function() {
 
 spawn_command = (bin, command, args, path) => {
   path && cd(path)
-  console.log('   ', __.padLeft(16, bin + command + args.join(' ')), path)
+  console.log('   ', __.padLeft(16, ([bin, command].concat(args)).join(' ')), path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
 meteor_packages_removed = 'autopublish insecure'.split(' ');
