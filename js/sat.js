@@ -29,7 +29,8 @@ const lib_dir      = 'lib'
 const client_dir   = 'client'
 const public_dir   = 'public'
 const packages_dir = 'packages'
-const cubesat_name = 'isaac:cubesat'
+const cubesat_name     = 'isaac:cubesat'
+const underscore2_name = 'isaac:underscore2'
 
 findRoot = d => {
   let dir_list = process.cwd().split('/')
@@ -48,66 +49,84 @@ const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || hom
 const paths2test   = 'client server lib public private resources'.split(' ')
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules]
 const tasks = {
-  ok:       { call: () => ok(),       dotsat: 0, test: 0, description: 'ok' },
-  test:     { call: () => test(),     dotsat: 1, test: 0, description: 'Test environment.' },
-  init:     { call: () => init(),     dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
-  help:     { call: () => help(),     dotsat: 0, test: 0, description: 'Help message.' },
-  create:   { call: () => create(),   dotsat: 0, test: 0, description: 'Create a project.' },
-  run:      { call: () => run(),      dotsat: 1, test: 0, description: 'Run meteor server.' },
-  deploy:   { call: () => deploy(),   dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
+  ok:       { call: () => ok(),         dotsat: 0, test: 0, description: 'Show arguments values' },
+  test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
+  init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
+  help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
+  create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
+  run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.' },
+  git:      { call: () => git(),        dotsat: 1, test: 0, description: 'Git push.' },
+  deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
   //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
-  settings: { call: () => settings(), dotsat: 1, test: 0, description: 'Settings' },
-  version:  { call: () => version(),  dotsat: 0, test: 0, description: 'Print sat version' },
-  publish:  { call: () => publish(),  dotsat: 0, test: 0, description: 'Publish Meteor packages.' },
-  coffee:   { call: () => coffee_compile(),      dotsat: 1, test: 0, description: 'Watching coffee files to complie.' },
-  mobileConfig:  { call: () => mobile_config(),  dotsat: 0, test: 1, description: 'Create mobile-config.js' },
-  updateAll:     { call: () => update_all(),     dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' },
-  createTest:    { call: () => create_test(),    dotsat: 0, test: 1, description: 'Create test directory.' },
-  installMobile: { call: () => install_mobile(), dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' },
-  npmRefresh:    { call: () => npm_refresh(),    dotsat: 0, test: 1, description: 'Publish and update npm cubesat packages.' },
-  npmUpdate:     { call: () => npm_update(),     dotsat: 0, test: 0, description: 'Update most recent cubesat npm package.' },
-  npmPublish:    { call: () => npm_publish(),    dotsat: 0, test: 1, description: 'Publish cubesat to npm' },
-  npmInstall:    { call: () => npm_install(),    dotsat: 0, test: 1, description: 'Install local cubesat' },
-  meteorRefresh: { call: () => meteor_refresh(), dotsat: 1, test: 1, description: 'Publish and update meteor cubesat packages.' },
-  meteorUpdate:  { call: () => meteor_update(),  dotsat: 1, test: 0, description: 'Update most recent meteor cubesat packages.' },
-  meteorPublish: { call: () => meteor_publish(), dotsat: 0, test: 1, description: 'Publish cubesat to meteor' }
+  settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings' },
+  version:  { call: () => version(),    dotsat: 0, test: 0, description: 'Print sat version', arg0: 1 },
+  publish:  { call: () => publish(),    dotsat: 0, test: 0, description: 'Publish Meteor packages.' },
+  coffee:   { call: () => coffee_compile(),       dotsat: 1, test: 0, description: 'Watching coffee files to complie.' },
+  mobileConfig:  { call: () => mobile_config(),   dotsat: 0, test: 1, description: 'Create mobile-config.js' },
+  updateAll:     { call: () => update_all(),      dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' },
+  createTest:    { call: () => create_test(),     dotsat: 0, test: 1, description: 'Create test directory.' },
+  installMobile: { call: () => install_mobile(),  dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' },
+  incver:        { call: () => incVerInPackage(), dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 },
+  npmRefresh:    { call: () => npm_refresh(),     dotsat: 0, test: 1, description: 'Publish and update npm cubesat packages.' },
+  npmUpdate:     { call: () => npm_update(),      dotsat: 0, test: 0, description: 'Update most recent cubesat npm package.' },
+  npmPublish:    { call: () => npm_publish(),     dotsat: 0, test: 1, description: 'Publish cubesat to npm' },
+  npmInstall:    { call: () => npm_install(),     dotsat: 0, test: 1, description: 'Install local cubesat' },
+  meteorRefresh: { call: () => meteor_refresh(),  dotsat: 1, test: 1, description: 'Publish and update meteor cubesat packages.' },
+  meteorUpdate:  { call: () => meteor_update(),   dotsat: 1, test: 0, description: 'Update most recent meteor cubesat packages.' },
+  meteorPublish: { call: () => meteor_publish(),  dotsat: 0, test: 1, description: 'Publish cubesat to meteor' }
 }
 
 const options = {
   t: { full: 'with-test', command: ['run', 'coffee', 'install-mobile'], description: 'Excute with test.' },
-  T: { full: 'for-test',  command: ['run', 'coffee', 'install-mobile'], description: 'Excute for test.' }
-}
-
-const error_quit = error => {
-  console.log(error)
-  process.exit(1) }
+  T: { full: 'for-test',  command: ['run', 'coffee', 'install-mobile'], description: 'Excute for test.' } }
 
 if (! command) command = 'help'  // empty command means 'sat help'
 const task_command = tasks[__.camelize(command)]
+const arg0 = argv._[0]
+
+task_command || error_quit(`fatal: Unknown command "${command}"`)
+task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
+task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
+
+const test_dir = task_command.test && arg0 ? arg0 : 'test'
+const test_path = add(cubesat_path, test_dir)
+fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `)
+
+if (test_path) {
+  test_client_path         = add(test_path, client_dir)
+  test_lib_path            = add(test_path, lib_dir)
+  test_public_path         = add(test_path, public_dir)
+  test_packages_path       = add(test_path, packages_dir)
+  cubesat_package_path     = add(test_packages_path, cubesat_name)
+  underscore2_package_path = add(test_packages_path, underscore2_name) }
+
+const path_info = {
+    site:        { type: "site",    name: "site",        path: site_path },
+    test:        { type: "test",    name: "test",        path: test_path },
+    cubesat:     { type: "package", name: "cubesat",     path: cubesat_package_path },
+    underscore2: { type: "package", name: "underscore2", path: underscore2_package_path } }
+
+error = e => e && (console.error(e) || true)
+
+const error_quit = e => {
+  console.log(e)
+  process.exit(1) }
 
 // error handling
-task_command || error_quit(`fatal: Unknown command "${command}"`)
-! site_path.length && task_command.dotsat &&  error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`)
 
-var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _meteor_run, _publish, _tagLine
-var addAttribute, attributeBracket, attributeClass, attributeParse, attributes
-var baseUnits, block, build
-var cd, client_path, codeLine, codeStr, coffee, coffee_clean, coffee_watch, collectExt
-var compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
-var deploy, directives, env, error
-var f, findRoot, fix_later__coffee_compile, fixup, func2val
-var github_file, github_url, gitpass
-var help, htmlAttributes, htmlNoEndTags
-var idClassKey, incVersion, includeAttributes, indentStyle, indexSettings, init, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
+var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
+var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
+var cd, client_path, codeLine, codeStr, coffee, coffee_clean, coffee_watch, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
+var deploy, directives, env, error, f, findRoot, fix_later__coffee_compile, fixup, func2val
+var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
+var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
 var lib_files, lib_path, loadSettings
 var mcTable, mc_obj, meteor_create, meteor_packages, meteor_packages_removed, meteor_publish, meteor_refresh, meteor_update
 var mkdir, mobile_config, mobile_config_js, mobile_packages, my_packages
-var newTab, nocacheRequire, npm_install, npm_publish, npm_refresh, npm_update
-var ok, public_files
-var rePublish, readWrite, ref1, run
+var newTab, nocacheRequire, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
 var seperators, settings, settings_json, settings_path, spawn_command, strOrObj, styleLoop, styleMediaQuery, style_path
-var tagLine, task, test, test_client_path, test_dir, test_lib_path, test_packages_path, test_path, test_public_path, toStyle
-var update_all, version, with_test, writeBuild
+var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
+var update_all, with_test, writeBuild
 
 let build_path, index_js_path, a_path, a_module
 
@@ -174,39 +193,6 @@ if (site_path.length) {
   public_files = __.toArray(Settings.public_files);
 }
 
-test_dir = (function() {
-  var ref2;
-  switch (false) {
-    case !(with_test = argv['with-test'] && __.isString(with_test)):
-      return with_test;
-    case !((task_command != null ? task_command.test : void 0) && argv._[0]):
-      return argv._[0];
-    default:
-      return 'test';
-  }
-})();
-
-test_path = fs.existsSync(test_path = add(cubesat_path, test_dir)) ? test_path : void 0;
-
-if (test_path) {
-  test_client_path = add(test_path, client_dir);
-  test_lib_path = add(test_path, lib_dir);
-  test_public_path = add(test_path, public_dir);
-  test_packages_path = add(test_path, packages_dir);
-  cubesat_package_path = add(test_packages_path, cubesat_name);
-}
-
-__RmCoffee_paths = function() {
-  return fs.readdirSync(site_path).filter(function(f) {
-    return coffee_ext === path.extname(f);
-  }).map(function(f) {
-    return add(site_path, f);
-  });
-};
-
-error = function(e) {
-  return e && (console.error(e) || 1);
-};
 
 isType = function(file, type) {
   return path.extname(file) === '.' + type;
@@ -222,33 +208,7 @@ collectExt = function(dir, ext) {
   })).join('\n');
 };
 
-cd = function(dir) {
-  return process.chdir(dir);
-};
-
-__func = function(f) {
-  if ('function' === typeof f) {
-    return f();
-  } else {
-    return true;
-  }
-};
-
-__rmdir = function(dir, f) {
-  if (fs.existsSync(dir)) {
-    fs.readdirSync(dir).forEach(function(file, index) {
-      var curPath;
-      if (fs.lstatSync(curPath = add(dir, file)).isDirectory()) {
-        return rmdir(curPath);
-      } else {
-        return fs.unlinkSync(curPath);
-      }
-    });
-    fs.rmdirSync(dir);
-  }
-  __["return"](f);
-  return dir;
-};
+cd = d => process.chdir(d)
 
 mkdir = function(dir, _path, f) {
   _path && process.chdir(_path);
@@ -405,82 +365,6 @@ mobile_config = function() {
   });
 };
 
-coffee = function(data) {
-  return cs.compile('#!/usr/bin/env node\n' + data, {
-    bare: true
-  });
-};
-/*
-directives = {
-  jade: {
-    file: '1.jade',
-    f: function(n, b) {
-      b = __.indent(b, 1);
-      return "template(name='" + n + "')\n" + b + "\n\n";
-    }
-  },
-  jade$: {
-    file: '2.html',
-    f: function(n, b) {
-      b = __.indent(b, 1);
-      return jade.compile("template(name='" + n + "')\n" + b + "\n\n", null)();
-    }
-  },
-  template$: {
-    file: 'template.html',
-    f: function(n, b) {
-      b = __.indent(b, 1);
-      return "<template name=\"" + n + "\">\n" + b + "\n</template>\n\n\n";
-    }
-  },
-  HTML: {
-    file: '3.html',
-    f: function(n, b) {
-      b = __.indent(b, 1);
-      return "<template name=\"" + n + "\">\n" + b + "\n</template>\n";
-    }
-  },
-  head: {
-    file: 'head.html',
-    header: function() {
-      return '<head>\n';
-    },
-    footer: function() {
-      return '</head>\n';
-    },
-    f: function(n, b) {
-      return __.indent(b, 1) + '\n';
-    }
-  },
-  less: {
-    file: '7.less',
-    f: function(n, b) {
-      return b + '\n';
-    }
-  },
-  css: {
-    file: '5.css',
-    header: function() {
-      return collectExt(style_path, 'css') + '\n';
-    },
-    f: function(n, b) {
-      return b + '\n';
-    }
-  },
-  styl: {
-    file: '4.styl',
-    f: function(n, b) {
-      return b + '\n\n';
-    }
-  },
-  styl$: {
-    file: '6.css',
-    f: function(n, b) {
-      return stylus(b).render() + '\n';
-    }
-  }
-};
-*/
 writeBuild = function(it, data) {
   var fwrite;
   if (__.isUndefined(data) || (__.isString(data) && data.length === 0)) {
@@ -884,89 +768,7 @@ includeAttributes = function(obj) {
     return k + '="' + __.parseValue(obj[k]) + '"';
   }).join(' ');
 };
-/*
-toTemplateLoop = function(obj) {
-  if (__.isObject(obj)) {
-    return __.reduceKeys(obj, {}, (function(_this) {
-      return function(o, k) {
-        switch (false) {
-          case !(__.check('id', 'class', k) && isHtmlAttribute(obj[k])):
-            return __.assign(o, toTemplateLoop.call(_this, tagLine.call(_this, idClassKey.call(_this, k), obj[k])));
-          case !__.check('id', 'class', k):
-            return __.object(o, idClassKey.call(_this, k), toTemplateLoop.call(_this, obj[k]));
-          default:
-            return __.object(o, k, toTemplateLoop.call(_this, obj[k]));
-        }
-      };
-    })(this));
-  } else {
-    return __.parseValue(obj);
-  }
-};
 
-const _eco = function(str) {
-  var data;
-  if (__.isEmpty(data = fixup.call(this, this.eco))) {
-    return str;
-  } else {
-    return eco.render(str, data);
-  }
-};
-
-toTemplate = function(d) {
-  switch (false) {
-    case !__.isEmpty(this[d]):
-      return null;
-    case !__.isString(this[d]):
-      return _eco.call(this, this[d]);
-    case !(__.isObject(this[d]) || __.isArray(this[d])):
-      return _eco.call(this, indentStyle(toTemplateLoop.call(this, fixup.call(this, this[d]))));
-    default:
-      return console.error("Unknown type", this[d]);
-  }
-};
-
-readExports = function(f) {
-  var base;
-  if (_index_ === (base = path.basename(f, coffee_ext))) {
-    return nocacheRequire(f);
-  } else {
-    return (nocacheRequire(f))[base];
-  }
-};
-
-build = function() {
-  var count, mkeys, source;
-  settings();
-  return;
-  mkdir(client_path);
-  this.Parts = global.Parts = __["return"]((source = site_coffees.reduce((function(o, f) {
-    return __.assign(o, readExports(add(site_path, f)));
-  }), {}))['Parts']);
-  this.Modules = __["return"](source['Modules']);
-  (mkeys = __.keys(this.Modules)).map(function(n) {
-    return __.module(n, this.Modules[n] = __["return"](this.Modules[n], __["return"](this.Modules[n])));
-  });
-  __.keys(directives).map(function(d) {
-    var it;
-    return writeBuild((it = directives[d]), mkeys.map(function(n) {
-      var b;
-      this.Modules[n][d] = __["return"](this.Modules[n][d], this.Modules[n]);
-      return (b = toTemplate.call(this.Modules[n], d)) && it.f.call(this, n, b);
-    }).filter(function(o) {
-      return o != null;
-    }).join(''));
-  });
-  count = 0;
-  return mkeys.forEach(function(n) {
-    var key;
-    this.Modules[n][key = 'style$'] && api.add(toStyle.call(this.Modules[n], key));
-    return ++count === mkeys.length && writeBuild({
-      file: 'absurd.css'
-    }, api.compile());
-  });
-};
-*/
 gitpass = function() {
   prompt.message = 'github';
   prompt.start();
@@ -1038,30 +840,8 @@ create = function() {
   });
 };
 
-incVersion = function(data, re) {
-  var version;
-  data.match(re);
-  console.log('verion:', version = RegExp.$2.split('.').map(function(w, j) {
-    if (j === 2) {
-      return String(+w + 1);
-    } else {
-      return w;
-    }
-  }).join('.'));
-  return data.replace(re, "$1" + version + "$3");
-};
 
-const getVersion = (file, re) => fs.readFileSync(file, 'utf8').match(re)[2]
-
-readWrite = function(file, func) {
-  return fs.readFile(file, 'utf8', function(e, data) {
-    return error(e) || fs.writeFile(file, func(data, 'utf8', function(err) {
-      return error(err);
-    }));
-  });
-};
-
-_publish = function(file, re) {
+__publish = function(file, re) {
   if (!test_path) {
     console.log('TEST_PATH is null') || process.exit(0);
   }
@@ -1075,7 +855,7 @@ rePublish = {
   meteor: /(version\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
 };
 
-npm_publish = function() {
+__npm_publish = function() {
   _publish(package_json, rePublish.npm);
   return spawn_command('npm', 'publish', ['.'], cubesat_package_path);
 };
@@ -1114,9 +894,7 @@ meteor_refresh = function() {
   });
 };
 
-_meteor_run = function(dir, port) {
-  return spawn_command('meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port || '3000']), dir || build_path);
-};
+const meteor_run = (path, port) => spawn_command('meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port || '3000']), path || site_path);
 
 coffee_watch = function(c, js) {
   return spawn('coffee', ['-o', js, '-wbc', c], {
@@ -1124,7 +902,6 @@ coffee_watch = function(c, js) {
   });
 };
 
-run    = () => _meteor_run(), argv['with-test'] && test()
 deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
 
 test   = () => {
@@ -1152,7 +929,7 @@ test   = () => {
       });
     });
   });
-  _meteor_run(test_path, '3300')
+  meteor_run(test_path, '3300')
 }
 
 create_test = function() {
@@ -1180,10 +957,49 @@ install_mobile = () => {
     () => console.log(new Date()) ))()
 }
 
-version = () => spawn_command('npm', 'info', ['cubesat', 'version'], build_path)
-help = () => __.keys(tasks).map(k => console.log('  ', (__.dasherize(k) + Array(15).join(' ')).slice(0, 16), tasks[k].description))
+__.toString = v =>
+  __.isString(v) ? v :
+  __.isObject(v) ? JSON.stringify(v) :
+  __.isScalar(v) || __.isArray(v) ? v.toString() : void 0
 
-init = () => ''
-ok   = () => console.log(argv)
+__.padLeft  = (pad, s) =>  // pad: pading space ' ' _number_ like 6 or pad _string_ like '****'
+  (__.toString(s) + (__.isNumber(pad) ? Array(pad + 1).join(' ') : pad)).slice(0, (__.isNumber(pad) ? pad : pad.length))
+__.padRight = (pad, s) => {}
+
+const git_push = (commit, ...paths) =>
+    (spawn_command('git', 'add', ['.'], paths[0])).on('exit', () =>
+        (spawn_command('git', 'commit', ['-m', commit], paths[0])).on('exit', () =>
+            (spawn_command('git', 'push', [], paths[0])).on('exit', () =>
+                paths[1] && git_push.apply({}, [commit].concat(paths.slice(1))) ) ) )
+
+const _npm_publish_    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
+const _meteor_publish_ = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', __.isFunction(after) ? after : () => {} )
+const getVersion = path => require(path).version
+const incVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
+const editFile = (file, func, action) =>
+    fs.readFile(file, 'utf8', (e, data) => error(e) ||
+        fs.writeFile(file, data = func(file, data), 'utf8', e => error(e) || __.isFunction(action, action(file, data))))
+let ver
+const _incVersionInPackageFile_ = (file, data) =>
+    data.replace(new RegExp('"version":\\s*"' + (ver = getVersion(file)) + '"'), '"version": "' + incVersion(ver) + '"')
+
+const _publish = (path, path2) => {
+  editFile(add(path, package_js),
+    (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
+    (f, d) => _meteor_publish_(path, () =>
+      editFile(add(path, package_json),
+        _incVersionInPackageFile_,
+        (f, d) => _npm_publish_(path,
+          __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
+
+const git       = () => git_push('ok2', underscore2_package_path, cubesat_package_path)
+const publish   = () => _publish.apply({}, __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path))
+const version   = () => console.log(getVersion(add(path_info[argv._[0].path], package_json)))
+const help      = () => {
+  __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
+  __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
+  __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
+const init = () => ''
+const ok   = () => console.log(argv)
 
 task_command.call()
