@@ -124,7 +124,7 @@ var lib_files, lib_path, loadSettings
 var mcTable, mc_obj, meteor_create, meteor_packages, meteor_packages_removed, meteor_publish, meteor_refresh, meteor_update
 var mkdir, mobile_config, mobile_config_js, mobile_packages, my_packages
 var newTab, nocacheRequire, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
-var seperators, settings, settings_json, settings_path, spawn_command, strOrObj, styleLoop, styleMediaQuery, style_path
+var seperators, settings, settings_json, settings_path, strOrObj, styleLoop, styleMediaQuery, style_path
 var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
 var update_all, with_test, writeBuild
 
@@ -295,9 +295,9 @@ fix_later__coffee_compile = function() {
   });
 };
 
-spawn_command = (bin, command, args, path) => {
+const spawn_command = (bin, command, args, path) => {
   path && cd(path)
-  console.log('   ', __.padLeft(16, ([bin, command].concat(args)).join(' ')), path)
+  console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' ')), path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
 meteor_packages_removed = 'autopublish insecure'.split(' ');
