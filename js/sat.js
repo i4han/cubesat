@@ -961,7 +961,8 @@ __.toString = v =>
 
 __.padLeft  = (pad, s) =>  // pad: pading space ' ' _number_ like 6 or pad _string_ like '****'
   (__.toString(s) + (__.isNumber(pad) ? Array(pad + 1).join(' ') : pad)).slice(0, (__.isNumber(pad) ? pad : pad.length))
-__.padRight = (pad, s) => {}
+__.padRight = (pad, s) =>
+  ((__.isNumber(pad) ? Array(pad + 1).join(' ') : pad) + __.toString(s)).slice(  -(__.isNumber(pad) ? pad : pad.length))
 
 const _git_push = (commit, ...paths) =>
     (spawn_command('git', 'add', ['.'], paths[0])).on('exit', () =>
