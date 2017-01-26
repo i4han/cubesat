@@ -111,24 +111,25 @@ const path_info = {
     cubesat:     { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path },
     underscore2: { type: "package", name: "underscore2", git: 1, path: underscore2_package_path } }
 
-
-// error handling
-
 var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
 var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
-var cd, client_path, codeLine, codeStr, coffee, coffee_clean, coffee_watch, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
+var cd, client_path, codeLine, codeStr, coffee, coffee_clean, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
 var deploy, directives, env, f, findRoot, fix_later__coffee_compile, fixup, func2val
 var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
 var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
-var lib_files, lib_path, loadSettings
+var lib_files, lib_path
 var mcTable, mc_obj, meteor_create, meteor_packages, meteor_packages_removed, meteor_publish, meteor_refresh, meteor_update
 var mkdir, mobile_config, mobile_config_js, mobile_packages, my_packages
-var newTab, nocacheRequire, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
+var newTab, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
 var seperators, settings, settings_json, settings_path, strOrObj, styleLoop, styleMediaQuery, style_path
 var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
 var update_all, with_test, writeBuild
 
-let build_path, index_js_path, a_path, a_module
+let build_path, index_js_path, a_path, r, s
+
+__.require = f => delete require.cache[f] && require(f)
+const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).Settings, __.return(r))) || {}
+indexSettings = f => (fs.existsSync(f) && __.return(s = __.require(f).setting, __.return(s))) || {}
 
 if (site_path.length) {
   // site_coffees = fs.readdirSync(site_path).filter(f => coffee_ext === path.extname(f))
@@ -138,17 +139,10 @@ if (site_path.length) {
   while (paths.length && ! fs.existsSync(add(last_path = paths.shift(), '.env'))) {}
   last_path.length && dotenv.config({path: last_path}) // dotenv has not used yet.
 
-  build_path = site_path
+  build_path    = site_path
   index_js_path = add(site_path, index_js);
   build_path && (mobile_config_js = add(build_path, 'mobile-config.js'));
-  env = v => (a_path = process.env[v]) && a_path.replace(/^~\//, home + '/')
-  nocacheRequire = f => delete require.cache[f] && require(f)
-  loadSettings   = f =>
-    (fs.existsSync(f) && __.return(a_module = (nocacheRequire(f)).Settings, __.return(a_module))) || {}
-  indexSettings = function(f) {
-    var s;
-    return (fs.existsSync(f) && __["return"](s = (nocacheRequire(f)).setting, __["return"](s))) || {};
-  };
+  // env = v => (a_path = process.env[v]) && a_path.replace(/^~\//, home + '/')
   Settings = loadSettings(settings_path = add(dot_cubesat_path, 'settings.coffee'));
   (f = function(o) {
     return __.keys(o).forEach(function(k) {
@@ -185,12 +179,12 @@ if (site_path.length) {
     return this.Settings = Settings;
   };
   init_settings();
-  client_path = add(site_path, client_dir);
-  lib_path = add(site_path, lib_dir);
-  style_path = add(site_path, 'style');
-  lib_files = __.toArray(Settings.lib_files);
-  my_packages = __.toArray(Settings.packages);
-  public_files = __.toArray(Settings.public_files);
+  client_path = add(site_path, client_dir)
+  lib_path    = add(site_path, lib_dir)
+  style_path  = add(site_path, 'style')
+  lib_files    = __.toArray(Settings.lib_files)
+  my_packages  = __.toArray(Settings.packages)
+  public_files = __.toArray(Settings.public_files)
 }
 
 
@@ -259,7 +253,7 @@ coffee_clean = function() {
     });
   });
 };
-
+/*
 coffee_watch = function(c, js) {
   return spawn('coffee', ['-o', js, '-wbc', c], {
     stdio: 'inherit'
@@ -294,7 +288,7 @@ fix_later__coffee_compile = function() {
     });
   });
 };
-
+*/
 const spawn_command = (bin, command, args, path) => {
   path && cd(path)
   console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' ')), path)
@@ -892,13 +886,13 @@ meteor_refresh = function() {
 };
 
 const meteor_run = (path, port) => spawn_command('meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port || '3000']), path || site_path);
-
+/*
 coffee_watch = function(c, js) {
   return spawn('coffee', ['-o', js, '-wbc', c], {
     stdio: 'inherit'
   });
 };
-
+*/
 deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
 
 test   = () => {
@@ -954,16 +948,6 @@ install_mobile = () => {
     () => console.log(new Date()) ))()
 }
 
-__.toString = v =>
-  __.isString(v) ? v :
-  __.isObject(v) ? JSON.stringify(v) :
-  __.isScalar(v) || __.isArray(v) ? v.toString() : void 0
-
-__.padLeft  = (pad, s) =>  // pad: pading space ' ' _number_ like 6 or pad _string_ like '****'
-  (__.toString(s) + (__.isNumber(pad) ? Array(pad + 1).join(' ') : pad)).slice(0, (__.isNumber(pad) ? pad : pad.length))
-__.padRight = (pad, s) =>
-  ((__.isNumber(pad) ? Array(pad + 1).join(' ') : pad) + __.toString(s)).slice(  -(__.isNumber(pad) ? pad : pad.length))
-
 const _git_push = (commit, ...paths) =>
     (spawn_command('git', 'add', ['.'], paths[0])).on('exit', () =>
         (spawn_command('git', 'commit', ['-m', commit], paths[0])).on('exit', () =>
@@ -992,7 +976,7 @@ const _publish = (path, path2) => {
 
 const git_push  = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
 const publish   = () =>  _publish.apply({}, __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path) )
-const version   = () => console.log(getVersion(add(path_info[argv._[0].path], package_json)))
+const version   = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
 const help      = () => {
   __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
   __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
