@@ -55,7 +55,7 @@ const tasks = {
   help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
   create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
   run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.' },
-  git:      { call: () => git(),        dotsat: 1, test: 0, description: 'Git push.' },
+  gitPush:  { call: () => git_push(),   dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
   deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
   //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
   settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings' },
@@ -84,6 +84,11 @@ if (! command) command = 'help'  // empty command means 'sat help'
 const task_command = tasks[__.camelize(command)]
 const arg0 = argv._[0]
 
+const error = e => e && (console.error(e) || true)
+const error_quit = e => {
+  console.error(e)
+  process.exit(1) }
+
 task_command || error_quit(`fatal: Unknown command "${command}"`)
 task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
 task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
@@ -101,23 +106,18 @@ if (test_path) {
   underscore2_package_path = add(test_packages_path, underscore2_name) }
 
 const path_info = {
-    site:        { type: "site",    name: "site",        path: site_path },
-    test:        { type: "test",    name: "test",        path: test_path },
-    cubesat:     { type: "package", name: "cubesat",     path: cubesat_package_path },
-    underscore2: { type: "package", name: "underscore2", path: underscore2_package_path } }
+    site:        { type: "site",    name: "site",        git: 1, path: site_path },
+    test:        { type: "test",    name: "test",        git: 0, path: test_path },
+    cubesat:     { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path },
+    underscore2: { type: "package", name: "underscore2", git: 1, path: underscore2_package_path } }
 
-error = e => e && (console.error(e) || true)
-
-const error_quit = e => {
-  console.log(e)
-  process.exit(1) }
 
 // error handling
 
 var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
 var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
 var cd, client_path, codeLine, codeStr, coffee, coffee_clean, coffee_watch, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
-var deploy, directives, env, error, f, findRoot, fix_later__coffee_compile, fixup, func2val
+var deploy, directives, env, f, findRoot, fix_later__coffee_compile, fixup, func2val
 var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
 var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
 var lib_files, lib_path, loadSettings
@@ -963,11 +963,11 @@ __.padLeft  = (pad, s) =>  // pad: pading space ' ' _number_ like 6 or pad _stri
   (__.toString(s) + (__.isNumber(pad) ? Array(pad + 1).join(' ') : pad)).slice(0, (__.isNumber(pad) ? pad : pad.length))
 __.padRight = (pad, s) => {}
 
-const git_push = (commit, ...paths) =>
+const _git_push = (commit, ...paths) =>
     (spawn_command('git', 'add', ['.'], paths[0])).on('exit', () =>
         (spawn_command('git', 'commit', ['-m', commit], paths[0])).on('exit', () =>
             (spawn_command('git', 'push', [], paths[0])).on('exit', () =>
-                paths[1] && git_push.apply({}, [commit].concat(paths.slice(1))) ) ) )
+                paths[1] && _git_push.apply({}, [commit].concat(paths.slice(1))) ) ) )
 
 const _npm_publish_    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
 const _meteor_publish_ = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', __.isFunction(after) ? after : () => {} )
@@ -989,8 +989,8 @@ const _publish = (path, path2) => {
         (f, d) => _npm_publish_(path,
           __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
 
-const git       = () => git_push('ok2', underscore2_package_path, cubesat_package_path)
-const publish   = () => _publish.apply({}, __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path))
+const git_push  = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
+const publish   = () =>  _publish.apply({}, __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path) )
 const version   = () => console.log(getVersion(add(path_info[argv._[0].path], package_json)))
 const help      = () => {
   __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
