@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 var indexOf = [].indexOf
 
+//const nconf    = require('nconf')
 const path     = require('path')
 const ps       = require('ps-node')
 const cs       = require('coffee-script')
@@ -10,7 +11,6 @@ const https    = require('https')
 const stylus   = require('stylus')
 const async    = require('async')
 const dotenv   = require('dotenv')
-const nconf    = require('nconf')
 const api      = require('absurd')()
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
 const __       = require('cubesat')
@@ -45,9 +45,10 @@ const site_path    = findRoot(dot_sat)
 const dot_sat_path = add(site_path, dot_sat)
 const cubesat_path = findRoot(dot_cubesat)
 const dot_cubesat_path = add(cubesat_path || home, dot_cubesat) // should be error? .cubesat doesn't exist?
+const settings_path    = add(dot_cubesat_path, 'settings.js')
 const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || home
 const paths2test   = 'client server lib public private resources'.split(' ')
-const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules]
+const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules] // the order is significant
 const tasks = {
   ok:       { call: () => ok(),         dotsat: 0, test: 0, description: 'Show arguments values' },
   test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
@@ -114,25 +115,25 @@ const path_info = {
 var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
 var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
 var cd, client_path, codeLine, codeStr, coffee, coffee_clean, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
-var deploy, directives, env, f, findRoot, fix_later__coffee_compile, fixup, func2val
+var deploy, directives, env, findRoot, fix_later__coffee_compile, fixup
 var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
 var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
 var lib_files, lib_path
 var mcTable, mc_obj, meteor_create, meteor_packages, meteor_packages_removed, meteor_publish, meteor_refresh, meteor_update
 var mkdir, mobile_config, mobile_config_js, mobile_packages, my_packages
 var newTab, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
-var seperators, settings, settings_json, settings_path, strOrObj, styleLoop, styleMediaQuery, style_path
+var seperators, settings, strOrObj, styleLoop, styleMediaQuery, style_path
 var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
 var update_all, with_test, writeBuild
 
-let build_path, index_js_path, a_path, r, s
+let build_path, site_js, index_js_path, settings_json
+let f, r, s
 
 __.require = f => delete require.cache[f] && require(f)
-const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).Settings, __.return(r))) || {}
-indexSettings = f => (fs.existsSync(f) && __.return(s = __.require(f).setting, __.return(s))) || {}
+const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
+__._settings = loadSettings(settings_path)
 
-if (site_path.length) {
-  // site_coffees = fs.readdirSync(site_path).filter(f => coffee_ext === path.extname(f))
+if (site_path) {
   site_js = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
   let paths = paths2watch
   let last_path
@@ -140,44 +141,33 @@ if (site_path.length) {
   last_path.length && dotenv.config({path: last_path}) // dotenv has not used yet.
 
   build_path    = site_path
-  index_js_path = add(site_path, index_js);
-  build_path && (mobile_config_js = add(build_path, 'mobile-config.js'));
+  index_js_path = add(site_path, index_js)
+  build_path && (mobile_config_js = add(build_path, 'mobile-config.js'))
   // env = v => (a_path = process.env[v]) && a_path.replace(/^~\//, home + '/')
-  Settings = loadSettings(settings_path = add(dot_cubesat_path, 'settings.coffee'));
-  (f = function(o) {
-    return __.keys(o).forEach(function(k) {
-      if (__.isObject(o[k])) {
-        return o[k] = f(o[k]);
-      } else {
-        return o[k] = __["return"](o[k]);
-      }
-    });
-  })(Settings);
-  settings_json = add(site_path, '.settings.json');
-  nconf.file({
-    file: add(dot_sat_path, 'config.json')
-  });
+  Settings = loadSettings(settings_path)
+  console.log(Settings)
+  console.log('-----------------')
+  ;( f = o => __.keys(o).forEach(k => o[k] = __.isObject(o[k]) ?  f(o[k]) : __.return(o[k])) )(Settings)
+  console.log(Settings)
+  settings_json = add(site_path, '.settings.json')
+
   this.Theme = this.Modules = global.Parts = {};
-  func2val = function(f, _) {
+  let f2v = (o, m) => {
+    __.keys(o).forEach(k => o[k] = __.isObject(o[k]) ? f2v(o[k], m) : __.return(o, m))
+    return o }
+  let func2val = function(f, _) {
     if (__.isObject(f)) {
-      __.keys(f).forEach(function(k) {
-        return f[k] = func2val(f[k], _);
-      });
-      return f;
-    } else if (__.isFunction(f)) {
-      return __["return"](f, _);
-    } else {
-      return f;
-    }
+      __.keys(f).forEach(k => f[k] = func2val(f[k], _))
+      return f
+    } else
+      return __.return(f, _)
   };
-  init_settings = function() {
-    var local, site;
-    Settings = loadSettings(settings_path);
-    __.assign(Settings, indexSettings(index_js_path));
-    func2val(Settings, Settings);
-    (site = Settings.site) && (local = Settings.local) && local[site] && __.assign(Settings, local[site]);
-    return this.Settings = Settings;
-  };
+  init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(index_js_path))
+    // var local, site;
+    //func2val(Settings, Settings)
+    // f2v(Settings, Settings)
+    // ;(site = Settings.site) && (local = Settings.local) && local[site] && __.assign(Settings, local[site]);
+    // return  Settings };
   init_settings();
   client_path = add(site_path, client_dir)
   lib_path    = add(site_path, lib_dir)
@@ -186,6 +176,12 @@ if (site_path.length) {
   my_packages  = __.toArray(Settings.packages)
   public_files = __.toArray(Settings.public_files)
 }
+
+let json
+settings = () =>
+    init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
+        (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
+            fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
 
 
 isType = function(file, type) {
@@ -294,21 +290,9 @@ const spawn_command = (bin, command, args, path) => {
   console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' ')), path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
-meteor_packages_removed = 'autopublish insecure'.split(' ');
-
-meteor_packages = ("service-configuration accounts-password fortawesome:fontawesome http iron:router " + cubesat_name + " jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus").split(' ');
-
-mobile_packages = [];
-
-settings = function() {
-  init_settings();
-  return fs.readFile(settings_json, 'utf-8', function(e, data) {
-    var json;
-    return (data === (json = JSON.stringify(Settings, '', 4) + '\n')) || fs.writeFile(settings_json, json, function(e) {
-      return console.log(new Date() + ' Settings are written.');
-    });
-  });
-};
+meteor_packages_removed = 'autopublish insecure'.split(' ')
+meteor_packages = ("service-configuration accounts-password fortawesome:fontawesome http iron:router " + cubesat_name + " jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus").split(' ')
+mobile_packages = []
 
 mc_obj = function(o) {
   return '\n' + __.keys(o).map(function(k) {
