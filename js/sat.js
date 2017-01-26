@@ -112,78 +112,47 @@ const path_info = {
     cubesat:     { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path },
     underscore2: { type: "package", name: "underscore2", git: 1, path: underscore2_package_path } }
 
-var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
-var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
-var cd, client_path, codeLine, codeStr, coffee, coffee_clean, collectExt, compare_file, cp, cpdir, create, create_test, cssDefaults, cubesat_package_path
-var deploy, directives, env, findRoot, fix_later__coffee_compile, fixup
-var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
-var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute, isType
-var lib_files, lib_path
-var mcTable, mc_obj, meteor_create, meteor_packages, meteor_packages_removed, meteor_publish, meteor_refresh, meteor_update
-var mkdir, mobile_config, mobile_config_js, mobile_packages, my_packages
-var newTab, npm_install, npm_publish, npm_refresh, npm_update, public_files, rePublish, readWrite, ref1, run
-var seperators, settings, strOrObj, styleLoop, styleMediaQuery, style_path
-var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
-var update_all, with_test, writeBuild
+const dotenv_conf = () => {
+    let last_path, paths = paths2watch
+    while (paths.length && ! fs.existsSync(add(last_path = paths.shift(), '.env'))) {}
+    last_path.length && dotenv.config({path: last_path}) }   // dotenv has not used yet.
 
-let build_path, site_js, index_js_path, settings_json
+let build_path, site_js, index_js_path, mobile_config_js, settings_json, client_path, lib_path
 let f, r, s
 
 __.require = f => delete require.cache[f] && require(f)
+
 const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
-__._settings = loadSettings(settings_path)
 
 if (site_path) {
-  site_js = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
-  let paths = paths2watch
-  let last_path
-  while (paths.length && ! fs.existsSync(add(last_path = paths.shift(), '.env'))) {}
-  last_path.length && dotenv.config({path: last_path}) // dotenv has not used yet.
-
   build_path    = site_path
-  index_js_path = add(site_path, index_js)
-  build_path && (mobile_config_js = add(build_path, 'mobile-config.js'))
-  // env = v => (a_path = process.env[v]) && a_path.replace(/^~\//, home + '/')
-  Settings = loadSettings(settings_path)
-  console.log(Settings)
-  console.log('-----------------')
-  ;( f = o => __.keys(o).forEach(k => o[k] = __.isObject(o[k]) ?  f(o[k]) : __.return(o[k])) )(Settings)
-  console.log(Settings)
-  settings_json = add(site_path, '.settings.json')
+  site_js       = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
+  index_js_path    = add(site_path, index_js)
+  mobile_config_js = add(site_path, 'mobile-config.js')
+  settings_json    = add(site_path, '.settings.json')
+  client_path      = add(site_path, client_dir)
+  lib_path         = add(site_path, lib_dir)
 
-  this.Theme = this.Modules = global.Parts = {};
-  let f2v = (o, m) => {
-    __.keys(o).forEach(k => o[k] = __.isObject(o[k]) ? f2v(o[k], m) : __.return(o, m))
-    return o }
-  let func2val = function(f, _) {
-    if (__.isObject(f)) {
-      __.keys(f).forEach(k => f[k] = func2val(f[k], _))
-      return f
-    } else
-      return __.return(f, _)
-  };
   init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(index_js_path))
-    // var local, site;
-    //func2val(Settings, Settings)
-    // f2v(Settings, Settings)
-    // ;(site = Settings.site) && (local = Settings.local) && local[site] && __.assign(Settings, local[site]);
-    // return  Settings };
-  init_settings();
-  client_path = add(site_path, client_dir)
-  lib_path    = add(site_path, lib_dir)
-  style_path  = add(site_path, 'style')
-  lib_files    = __.toArray(Settings.lib_files)
-  my_packages  = __.toArray(Settings.packages)
-  public_files = __.toArray(Settings.public_files)
-}
+  init_settings() }
+
+  // style_path       = add(site_path, 'style') // what is for?
+  // lib_files    = __.toArray(Settings.lib_files)
+  // my_packages  = __.toArray(Settings.packages)
+  // public_files = __.toArray(Settings.public_files)
+
 
 let json
-settings = () =>
+const settings = () =>
     init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
         (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
             fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
 
+const cd = d => process.chdir(d)
+const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
+const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 
+/*
 isType = function(file, type) {
   return path.extname(file) === '.' + type;
 };
@@ -197,22 +166,13 @@ collectExt = function(dir, ext) {
     }
   })).join('\n');
 };
+*/
 
-cd = d => process.chdir(d)
-
-mkdir = function(dir, _path, f) {
-  _path && process.chdir(_path);
-  return dir && fs.readdir(dir, function(e, l) {
-    return e && fs.mkdir(dir, function(e) {
-      return e || __["return"](f);
-    });
-  });
-};
+/*
 
 compare_file = function(source, target) {
   return false;
 };
-
 cp = function(source, target) {
   return !compare_file(source, target) && fs.readFile(source, function(e, data) {
     return error(e) || fs.readFile(target, function(e, data_t) {
@@ -221,14 +181,14 @@ cp = function(source, target) {
   });
 };
 
-cpdir = function(source, target) {
+const cpdir = function(source, target) {
   return fs.readdir(source, function(e, list) {
     return list.map(function(f) {
       var _path, t_f;
       if (f.match(/^\./)) {
         return '';
       } else if ((fs.lstatSync(_path = add(source, f))).isDirectory()) {
-        return mkdir((t_f = add(target, f)), null, function() {
+        return fs.mkdir((t_f = add(target, f)), function() {
           return cpdir(_path, t_f);
         });
       } else {
@@ -249,7 +209,7 @@ coffee_clean = function() {
     });
   });
 };
-/*
+
 coffee_watch = function(c, js) {
   return spawn('coffee', ['-o', js, '-wbc', c], {
     stdio: 'inherit'
@@ -284,15 +244,30 @@ fix_later__coffee_compile = function() {
     });
   });
 };
+
+let meteor_packages_removed = 'autopublish insecure'.split(' ')
+let meteor_packages = ("service-configuration accounts-password fortawesome:fontawesome http iron:router " + cubesat_name + " jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus").split(' ')
+let mobile_packages = []
+
 */
 const spawn_command = (bin, command, args, path) => {
   path && cd(path)
   console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' ')), path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
-meteor_packages_removed = 'autopublish insecure'.split(' ')
-meteor_packages = ("service-configuration accounts-password fortawesome:fontawesome http iron:router " + cubesat_name + " jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus").split(' ')
-mobile_packages = []
+
+var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
+var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
+var codeLine, codeStr, coffee, coffee_clean, create, create_test, cssDefaults, cubesat_package_path
+var deploy, directives, env, findRoot, fix_later__coffee_compile, fixup
+var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
+var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute
+var mcTable, mc_obj, meteor_create , meteor_publish, meteor_refresh, meteor_update
+var mobile_config, my_packages
+var newTab, npm_install, npm_publish, npm_refresh, npm_update, rePublish, readWrite, ref1, run
+var seperators, strOrObj, styleLoop, styleMediaQuery
+var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
+var update_all, with_test, writeBuild
 
 mc_obj = function(o) {
   return '\n' + __.keys(o).map(function(k) {
@@ -783,6 +758,7 @@ github_url = function(repo) {
   return 'https://github.com/' + repo + '.git';
 };
 
+/*
 meteor_create = function(dir, fn) {
   return (spawn_command('meteor', 'create', [dir], site_path = process.cwd())).on('exit', function() {
     build_path = add(site_path, dir);
@@ -806,6 +782,7 @@ meteor_create = function(dir, fn) {
     }))();
   });
 };
+*/
 
 create = function() {
   var site;
@@ -879,6 +856,32 @@ coffee_watch = function(c, js) {
 */
 deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
 
+
+__create_test = function() {
+  (test_path = argv._[0]) || console.error("error: Test directory name is missing.") || process.exit(1);
+  if (fs.existsSync(test_path)) {
+    return console.error("error: Directory already exist.");
+  } else {
+    return meteor_create(test_path, function() {
+      return mkdir(packages_dir, null, function() {
+        return mkdir(cubesat_name, packages_dir, function() {
+          return (spawn_command('git', 'clone', [github_url('i4han/cubesat'), '.'], cubesat_name)).on('exit', function() {
+            return console.info("info: cubesat package directory:", process.cwd());
+          });
+        });
+      });
+    });
+  }
+};
+
+install_mobile = () => {
+  let wt
+  !site_path && !((wt = argv['with-test']) && test_path) && console.error("error: Run in .sat working directory or specify valid test name." || process.exit(1));
+  ;(['install-sdk', 'add-platform'].reduce(((f, c) =>
+    () => (spawn_command('meteor', c, ['ios'], wt ? test_path : build_path)).on('exit', f)),
+    () => console.log(new Date()) ))()
+}
+
 test   = () => {
   test_path || error_quit('error: Can not find test_path.')
   console.log(test_path)
@@ -905,31 +908,6 @@ test   = () => {
     });
   });
   meteor_run(test_path, '3300')
-}
-
-create_test = function() {
-  (test_path = argv._[0]) || console.error("error: Test directory name is missing.") || process.exit(1);
-  if (fs.existsSync(test_path)) {
-    return console.error("error: Directory already exist.");
-  } else {
-    return meteor_create(test_path, function() {
-      return mkdir(packages_dir, null, function() {
-        return mkdir(cubesat_name, packages_dir, function() {
-          return (spawn_command('git', 'clone', [github_url('i4han/cubesat'), '.'], cubesat_name)).on('exit', function() {
-            return console.info("info: cubesat package directory:", process.cwd());
-          });
-        });
-      });
-    });
-  }
-};
-
-install_mobile = () => {
-  let wt
-  !site_path && !((wt = argv['with-test']) && test_path) && console.error("error: Run in .sat working directory or specify valid test name." || process.exit(1));
-  ;(['install-sdk', 'add-platform'].reduce(((f, c) =>
-    () => (spawn_command('meteor', c, ['ios'], wt ? test_path : build_path)).on('exit', f)),
-    () => console.log(new Date()) ))()
 }
 
 const _git_push = (commit, ...paths) =>
