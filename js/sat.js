@@ -136,12 +136,6 @@ if (site_path) {
   init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(index_js_path))
   init_settings() }
 
-  // style_path       = add(site_path, 'style') // what is for?
-  // lib_files    = __.toArray(Settings.lib_files)
-  // my_packages  = __.toArray(Settings.packages)
-  // public_files = __.toArray(Settings.public_files)
-
-
 let json
 const settings = () =>
     init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
@@ -152,109 +146,10 @@ const cd = d => process.chdir(d)
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 
-/*
-isType = function(file, type) {
-  return path.extname(file) === '.' + type;
-};
-
-collectExt = function(dir, ext) {
-  return (fs.existsSync(dir) || '') && ((fs.readdirSync(dir)).map(function(file) {
-    if (isType(file, ext)) {
-      return fs.readFileSync(add(dir, file));
-    } else {
-      return '';
-    }
-  })).join('\n');
-};
-*/
-
-/*
-
-compare_file = function(source, target) {
-  return false;
-};
-cp = function(source, target) {
-  return !compare_file(source, target) && fs.readFile(source, function(e, data) {
-    return error(e) || fs.readFile(target, function(e, data_t) {
-      return e || (data.length > 0 && data.toString() !== data_t.toString()) && fs.writeFile(target, data, function() {});
-    });
-  });
-};
-
-const cpdir = function(source, target) {
-  return fs.readdir(source, function(e, list) {
-    return list.map(function(f) {
-      var _path, t_f;
-      if (f.match(/^\./)) {
-        return '';
-      } else if ((fs.lstatSync(_path = add(source, f))).isDirectory()) {
-        return fs.mkdir((t_f = add(target, f)), function() {
-          return cpdir(_path, t_f);
-        });
-      } else {
-        return cp(_path, add(target, f));
-      }
-    });
-  });
-};
-
-coffee_clean = function() {
-  return ps.lookup({
-    command: 'node',
-    psargs: 'ux'
-  }, function(e, a) {
-    return a.map(function(p) {
-      var ref2;
-      return '-wbc' === ((ref2 = p["arguments"]) != null ? ref2[3] : void 0) && process.kill(p.pid, 'SIGKILL');
-    });
-  });
-};
-
-coffee_watch = function(c, js) {
-  return spawn('coffee', ['-o', js, '-wbc', c], {
-    stdio: 'inherit'
-  });
-};
-
-fix_later__coffee_compile = function() {
-  var coffee_dir, js_dir;
-  mkdir(lib_path);
-  coffee_dir = [];
-  js_dir = [];
-  package_paths && package_paths.map(function(p) {
-    coffee_dir.push(add(p, 'coffee'));
-    return js_dir.push(add(p, 'js'));
-  });
-  return ps.lookup({
-    command: 'node',
-    psargs: 'ux'
-  }, function(e, a) {
-    return a.map(function(p, i) {
-      var c, ref2;
-      if ('-wbc' === ((ref2 = p["arguments"]) != null ? ref2[3] : void 0) && ((c = p["arguments"][4]) != null)) {
-        if ((i = coffee_dir.indexOf(c)) < 0) {
-          process.kill(p.pid, 'SIGKILL');
-        } else {
-          [coffee_dir.splice(i, 1), js_dir.splice(i, 1)];
-        }
-      }
-      return a.length - 1 === i && coffee_dir.map(function(c, j) {
-        return coffee_watch(c, js_dir[j]);
-      });
-    });
-  });
-};
-
-let meteor_packages_removed = 'autopublish insecure'.split(' ')
-let meteor_packages = ("service-configuration accounts-password fortawesome:fontawesome http iron:router " + cubesat_name + " jquery mizzao:bootstrap-3 mizzao:jquery-ui mquandalle:jade stylus").split(' ')
-let mobile_packages = []
-
-*/
 const spawn_command = (bin, command, args, path) => {
   path && cd(path)
   console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' ')), path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
-
 
 var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
 var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
@@ -268,27 +163,6 @@ var newTab, npm_install, npm_publish, npm_refresh, npm_update, rePublish, readWr
 var seperators, strOrObj, styleLoop, styleMediaQuery
 var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
 var update_all, with_test, writeBuild
-
-mc_obj = function(o) {
-  return '\n' + __.keys(o).map(function(k) {
-    return '   ' + k + ': "' + o[k] + '"';
-  }).join(',\n');
-};
-
-mcTable = {
-  setPreference:   { list: true },
-  configurePlugin: { list: true }
-}
-
-strOrObj = function(o) {
-  if (__.isObject(o)) {
-    return '{\n' + __.keys(o).map(function(k) {
-      return '   ' + k + ': "' + o[k] + '"';
-    }).join(',\n') + '\n}';
-  } else {
-    return '"' + o + '"';
-  }
-};
 
 mobile_config = function() {
   var data, o;
@@ -313,6 +187,27 @@ mobile_config = function() {
       return console.log(new Date() + ' ' + mobile_config_js + ' is written.');
     });
   });
+};
+
+mc_obj = function(o) {
+  return '\n' + __.keys(o).map(function(k) {
+    return '   ' + k + ': "' + o[k] + '"';
+  }).join(',\n');
+};
+
+mcTable = {
+  setPreference:   { list: true },
+  configurePlugin: { list: true }
+}
+
+strOrObj = function(o) {
+  if (__.isObject(o)) {
+    return '{\n' + __.keys(o).map(function(k) {
+      return '   ' + k + ': "' + o[k] + '"';
+    }).join(',\n') + '\n}';
+  } else {
+    return '"' + o + '"';
+  }
 };
 
 writeBuild = function(it, data) {
