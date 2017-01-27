@@ -148,7 +148,7 @@ const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 
 const spawn_command = (bin, command, args, path) => {
   path && cd(path)
-  console.log('   ', __.padLeft(30, ([bin, command].concat(args)).join(' '))
+  console.log('   ', ([bin, command].concat(args)).join(' '))
   console.log('   ', path)
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
