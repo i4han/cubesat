@@ -29,8 +29,6 @@ const lib_dir      = 'lib'
 const client_dir   = 'client'
 const public_dir   = 'public'
 const packages_dir = 'packages'
-const cubesat_name     = 'isaac:cubesat'
-const underscore2_name = 'isaac:underscore2'
 
 findRoot = d => {
   let dir_list = process.cwd().split('/')
@@ -67,7 +65,7 @@ const tasks = {
   updateAll:     { call: () => update_all(),      dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' },
   createTest:    { call: () => create_test(),     dotsat: 0, test: 1, description: 'Create test directory.' },
   installMobile: { call: () => install_mobile(),  dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' },
-  incver:        { call: () => incVerInPackage(), dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 },
+  addVersion:    { call: () => add_version(),     dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 },
   npmRefresh:    { call: () => npm_refresh(),     dotsat: 0, test: 1, description: 'Publish and update npm cubesat packages.' },
   npmUpdate:     { call: () => npm_update(),      dotsat: 0, test: 0, description: 'Update most recent cubesat npm package.' },
   npmPublish:    { call: () => npm_publish(),     dotsat: 0, test: 1, description: 'Publish cubesat to npm' },
@@ -99,18 +97,25 @@ const test_path = add(cubesat_path, test_dir)
 fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `)
 
 if (test_path) {
-  test_client_path         = add(test_path, client_dir)
-  test_lib_path            = add(test_path, lib_dir)
-  test_public_path         = add(test_path, public_dir)
-  test_packages_path       = add(test_path, packages_dir)
-  cubesat_package_path     = add(test_packages_path, cubesat_name)
-  underscore2_package_path = add(test_packages_path, underscore2_name) }
+  test_client_path     = add(test_path, client_dir)
+  test_lib_path        = add(test_path, lib_dir)
+  test_public_path     = add(test_path, public_dir)
+  test_packages_path   = add(test_path, packages_dir)
+  cubesat_package_path = add(test_packages_path, 'isaac:cubesat')
+  jqx_package_path     = add(test_packages_path, "isaac:jquery-x")
+  sq_package_path      = add(test_packages_path, "isaac:style-query")
+  u2_package_path      = add(test_packages_path, 'isaac:underscore2') }
 
 const path_info = {
-    site:        { type: "site",    name: "site",        git: 1, path: site_path },
-    test:        { type: "test",    name: "test",        git: 0, path: test_path },
-    cubesat:     { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path },
-    underscore2: { type: "package", name: "underscore2", git: 1, path: underscore2_package_path } }
+    site:     { type: "site",    name: "site",        git: 1, path: site_path },
+    test:     { type: "test",    name: "test",        git: 0, path: test_path },
+    cubesat:  { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path, publish: 1 },
+    jqx:      { type: "package", name: "jquery-x",    git: 1, path: jqx_package_path },
+    sq:       { type: "package", name: "style-query", git: 1, path: sq_package_path },
+    u2:       { type: "package", name: "underscore2", git: 1, path: u2_package_path, publish: 1 } }
+
+const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
+const publish_paths = __.keys(path_info).filter(k => path_info[k].publish).map(k => path_info[k].path)
 
 const dotenv_conf = () => {
     let last_path, paths = paths2watch
@@ -713,7 +718,7 @@ meteor_publish = function() {
   return spawn_command('meteor', 'publish', [], cubesat_package_path);
 };
 
-meteor_update = function() {
+__meteor_update = function() {
   return spawn_command('meteor', 'update', [cubesat_name], build_path);
 };
 
@@ -814,11 +819,11 @@ const _git_push = (commit, ...paths) =>
 
 const _npm_publish_    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
 const _meteor_publish_ = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', __.isFunction(after) ? after : () => {} )
-const getVersion = path => require(path).version
+const getVersion = path => __.require(path).version
 const incVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
 const editFile = (file, func, action) =>
     fs.readFile(file, 'utf8', (e, data) => error(e) ||
-        fs.writeFile(file, data = func(file, data), 'utf8', e => error(e) || __.isFunction(action, action(file, data))))
+        fs.writeFile(file, data = func(file, data), 'utf8', e => error(e) || (action && __.isFunction(action, action(file, data)))))
 let ver
 const _incVersionInPackageFile_ = (file, data) =>
     data.replace(new RegExp('"version":\\s*"' + (ver = getVersion(file)) + '"'), '"version": "' + incVersion(ver) + '"')
@@ -832,10 +837,16 @@ const _publish = (path, path2) => {
         (f, d) => _npm_publish_(path,
           __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
 
-const git_push  = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
-const publish   = () =>  _publish.apply({}, __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path) )
-const version   = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
-const help      = () => {
+const _add_version = (path) => {
+    editFile(add(path, package_js),
+      (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
+      () => editFile(add(path, package_json), _incVersionInPackageFile_, () => version() )) }
+
+const git_push    = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
+const publish     = () =>  _publish.apply({}, publish_paths)
+const version     = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
+const add_version = () => _add_version(path_info[argv._[0]].path)
+const help        = () => {
   __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
   __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
   __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
