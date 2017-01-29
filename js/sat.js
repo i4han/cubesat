@@ -696,20 +696,6 @@ create = function() {
 };
 
 
-__publish = function(file, re) {
-  if (!test_path) {
-    console.log('TEST_PATH is null') || process.exit(0);
-  }
-  return readWrite(add(cubesat_package_path, file), function(data) {
-    return incVersion(data, re);
-  });
-};
-
-rePublish = {
-  npm:    /("version"\s*:\s*['"])([0-9.]+)(['"]\s*,)/m,
-  meteor: /(version\s*:\s*['"])([0-9.]+)(['"]\s*,)/m
-};
-
 __npm_publish = function() {
   _publish(package_json, rePublish.npm);
   return spawn_command('npm', 'publish', ['.'], cubesat_package_path);
@@ -750,13 +736,7 @@ meteor_refresh = function() {
 };
 
 const meteor_run = (path, port) => spawn_command('meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port || '3000']), path || site_path);
-/*
-coffee_watch = function(c, js) {
-  return spawn('coffee', ['-o', js, '-wbc', c], {
-    stdio: 'inherit'
-  });
-};
-*/
+
 deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
 
 
