@@ -48,7 +48,8 @@ const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || hom
 const paths2test   = 'client server lib public private resources'.split(' ')
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules] // the order is significant
 const tasks = {
-  ok:       { call: () => ok(),         dotsat: 0, test: 0, description: 'Show arguments values' },
+  env:      { call: () => show_env(),   dotsat: 0, test: 0, description: 'Show arguments and environment variables.' },
+  paths:    { call: () => show_paths(), dotsat: 0, test: 0, description: 'Show working paths.' },
   test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
   init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
   help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
@@ -847,10 +848,16 @@ const publish     = () =>  _publish.apply({}, publish_paths)
 const version     = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
 const add_version = () => _add_version(path_info[argv._[0]].path)
 const help        = () => {
-  __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
-  __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
-  __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
+    __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
+    __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
 const init = () => ''
-const ok   = () => console.log(argv)
+
+const show_paths = () =>
+    __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
+
+environment_variables = 'PATH MONGO_URL NODE_MODULES'.split(' ')
+const show_env = () => {
+    console.log('   arguments:   ', argv)
+    environment_variables.map(k => console.log(`   $${__.padLeft(12, k)} = ` + process.env[k])) }
 
 task_command.call()
