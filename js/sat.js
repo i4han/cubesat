@@ -2,16 +2,11 @@
 var indexOf = [].indexOf
 
 //const nconf    = require('nconf')
+const fs       = require('fs')
 const path     = require('path')
 const ps       = require('ps-node')
 const cs       = require('coffee-script')
-const md5      = require('md5')
-const eco      = require('eco')
-const https    = require('https')
-const stylus   = require('stylus')
-const async    = require('async')
 const dotenv   = require('dotenv')
-const api      = require('absurd')()
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
 const __       = require('cubesat')
 
@@ -39,6 +34,7 @@ findRoot = d => {
 
 const dot_sat      = '.sat'
 const dot_cubesat  = '.cubesat'
+const dot_env      = '.env'
 const site_path    = findRoot(dot_sat)
 const dot_sat_path = add(site_path, dot_sat)
 const cubesat_path = findRoot(dot_cubesat)
@@ -53,10 +49,12 @@ const tasks = {
   args:     { call: () => show_args(),  dotsat: 0, test: 0, description: 'Show arguments.' },
   test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
   init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
+  update:   { call: () => update(),     dotsat: 0, test: 0, description: 'Update cubesat' },
   help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
   create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
   run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.' },
   gitPush:  { call: () => git_push(),   dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
+  dotEnv:   { call: () => export_dot_env(), dotsat: 1, test: 0, description: 'Export .env $. <(sat dot-env)'},
   deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
   //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
   settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings' },
@@ -163,7 +161,7 @@ var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLin
 var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
 var codeLine, codeStr, coffee, coffee_clean, create, create_test, cssDefaults, cubesat_package_path
 var deploy, directives, env, findRoot, fix_later__coffee_compile, fixup
-var github_file, github_url, gitpass, htmlAttributes, htmlNoEndTags
+var github_url, gitpass, htmlAttributes, htmlNoEndTags
 var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute
 var mcTable, mc_obj, meteor_create , meteor_publish, meteor_refresh, meteor_update
 var mobile_config, my_packages
@@ -636,26 +634,26 @@ gitpass = function() {
   });
 };
 
-github_file = function(file) {
-  var req;
-  req = https.request({
-    host: 'raw.githubusercontent.com',
-    port: 443,
-    method: 'GET',
-    path: add('/', argv.user || 'i4han', argv.repo || 'sat-init', argv.branch || 'master', path.basename(file))
-  }, function(res) {
-    res.setEncoding('utf8');
-    return res.on('data', function(b) {
-      return fs.writeFile(file, b, 'utf8', function(e) {
-        return console.log('written:', file);
-      });
-    });
-  });
-  req.end();
-  return req.on('error', function(e) {
-    return console.log('problem with request: ' + e.message);
-  });
-};
+// github_file = function(file) {
+//   var req;
+//   req = https.request({
+//     host: 'raw.githubusercontent.com',
+//     port: 443,
+//     method: 'GET',
+//     path: add('/', argv.user || 'i4han', argv.repo || 'sat-init', argv.branch || 'master', path.basename(file))
+//   }, function(res) {
+//     res.setEncoding('utf8');
+//     return res.on('data', function(b) {
+//       return fs.writeFile(file, b, 'utf8', function(e) {
+//         return console.log('written:', file);
+//       });
+//     });
+//   });
+//   req.end();
+//   return req.on('error', function(e) {
+//     return console.log('problem with request: ' + e.message);
+//   });
+// };
 
 github_url = function(repo) {
   return 'https://github.com/' + repo + '.git';
@@ -819,11 +817,15 @@ const _publish = (path, path2) => {
         (f, d) => _npm_publish_(path,
           __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
 
+const export_dot_env = () => {
+    fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
+        console.log(data.replace(/^\s*([a-zA-Z])/mg, "export $1")) )}
 const _add_version = (path) => {
     editFile(add(path, package_js),
       (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
       () => editFile(add(path, package_json), _incVersionInPackageFile_, () => version() )) }
 
+const update      = () => spawn_command('npm', 'install', ['.',  '--prefix', node_modules], cubesat_package_path)
 const git_push    = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
 const publish     = () =>  _publish.apply({}, publish_paths)
 const version     = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
@@ -835,12 +837,9 @@ const init = () => ''
 const show_args  = () => {
     console.log('   arguments:   ', argv)
     __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
-
 const show_paths = () =>
     __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
-
-environment_variables = 'PATH MONGO_URL MONGO_HORUS NODE_MODULES'.split(' ')
 const show_env = () =>
-    environment_variables.map(k => console.log(`   $${__.padLeft(12, k)} = ` + process.env[k]))
+    'MONGO_URL MAIL_URL NODE_MODULES PATH'.split(' ').map(k => console.log(`   $${__.padLeft(12, k)} = ` + process.env[k]))
 
 task_command.call()
