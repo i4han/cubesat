@@ -839,7 +839,7 @@ const show_args  = () => {
 const show_paths = () =>
     __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
 
-environment_variables = 'PATH MONGO_URL NODE_MODULES'.split(' ')
+environment_variables = 'PATH MONGO_URL MONGO_HORUS NODE_MODULES'.split(' ')
 const show_env = () =>
     environment_variables.map(k => console.log(`   $${__.padLeft(12, k)} = ` + process.env[k]))
 
