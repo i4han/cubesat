@@ -14,14 +14,14 @@ class Module {
          else Sat.module[name] = this
       this._    = this._    || {}
       this.user = this.user || {}
-      this._.router = {}
       this.property = {}
-      this._.head   = {}
-      this._.style  = {}
-      this._.helpers = {}
-      this._.events  = {}
-      this._.methods = {}
-      this._.mongo  = {}
+    //   this._.router = {}
+    //   this._.head   = {}
+    //   this._.style  = {}
+    //   this._.helpers = {}
+    //   this._.events  = {}
+    //   this._.methods = {}
+    //   this._.mongo  = {}
       this._.name  = this.user.name  = name
       this._.label = this.user.label = __.capitalize(name) }
    name() { return this._.name }
