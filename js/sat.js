@@ -46,19 +46,20 @@ const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_p
 // third command
 const tasks = {
   env:      { call: () => show_env(),   dotsat: 0, test: 0, description: 'Show arguments and environment variables.' },
+  updateEnv: { call: () => update_env(),   dotsat: 0, test: 0, description: 'Update environment variables from .env file.' },
   paths:    { call: () => show_paths(), dotsat: 0, test: 0, description: 'Show working paths.' },
   args:     { call: () => show_args(),  dotsat: 0, test: 0, description: 'Show arguments.' },
-  test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
+  test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.', settings: 1},
   init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
   update:   { call: () => update(),     dotsat: 0, test: 0, description: 'Update cubesat', thirdCommand: 1 },
   help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
   create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
-  run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.' },
+  run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.', settings: 1},
   gitPush:  { call: () => git_push(),   dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
   dotEnv:   { call: () => export_dot_env(), dotsat: 1, test: 0, description: 'Export .env $. <(sat dot-env)'},
   deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
   //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
-  settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings' },
+  settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings', settings: 1},
   version:  { call: () => version(),    dotsat: 0, test: 0, description: 'Print sat version', arg0: 1 },
   publish:  { call: () => publish(),    dotsat: 0, test: 0, description: 'Publish Meteor packages.' },
   coffee:   { call: () => coffee_compile(),       dotsat: 1, test: 0, description: 'Watching coffee files to complie.' },
@@ -140,7 +141,7 @@ if (site_path) {
   lib_path         = add(site_path, lib_dir)
 
   init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(index_js_path))
-  init_settings() }
+  task_command.settings && init_settings() }
 
 let json
 const settings = () =>
