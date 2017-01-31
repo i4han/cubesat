@@ -48,10 +48,11 @@ htmlTags.forEach(tag =>
       obj.length === 0 ? HTML[tag]() :
                          HTML[tag](mustache(_, obj)))
 
-__.HEAD  = (...a) => a.slice(1).forEach((v) => $('head').append(HTML.toHTML(v)))
+//__.HEAD  = (...a) => a.slice(1).forEach((v) => $('head').append(HTML.toHTML(v)))
 __.CLASS = (...a) => HTML.DIV({class: a[0]}, __.return(a[1]))
 __.ID    = (...a) => HTML.DIV({id:    a[0]}, __.return(a[1]))
-cube.Head = __.HEAD
+__.LOOK  = (v, lookup) => Spacebars.call(v.lookup(lookup))
+//cube.Head = __.HEAD
 
 cube.Switch = function(_) {
   var args, condition, len;
@@ -94,7 +95,7 @@ blaze.Include = (_, name, ...a) =>
 
 ;['Each', 'With'].forEach(tag => blaze[tag] = (_, lookup, func) => Blaze[tag](() => cube.lookup(_, lookup), func))
 ;['If'].forEach(tag => blaze[tag] = (_, lookup, f_then, f_else) => Blaze[tag](() => cube.lookup(_, lookup), f_then, f_else))
-
+//blaze.Each = (_, lookup, func) => Blaze.Each(() => Spacebars.call(_.lookup(lookup)), func)
 let idclassKey = function(k) {  // don't use arrow function 'this'
   switch (false) {
     case !__.check('local', k):

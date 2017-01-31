@@ -17,10 +17,10 @@ class Module {
       this._.router = {}
       this.property = {}
       this._.head   = {}
-      this.style    = {}
-      this.helper   = {}
-      this.event    = {}
-      this._.methods   = {}
+      this._.style  = {}
+      this._.helpers = {}
+      this._.events  = {}
+      this._.methods = {}
       this._.mongo  = {}
       this._.name  = this.user.name  = name
       this._.label = this.user.label = __.capitalize(name) }
@@ -29,8 +29,10 @@ class Module {
       let uniqueName = this.name() + (this._.hash ? '-' + this._.hash : '-local')
       return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
    template(t) {
-      console.log(this._.name + ' from template')
-      return typeof t === 'undefined' ? this._template : __.object(this, '_template', t)
+    //   console.log(this._.name + ' from template')
+      if (!t) return this._template
+      this._template = t
+      return this
    }
    init(f) {
      this._init = f
@@ -39,16 +41,16 @@ class Module {
      if (__.isUndefined(o)) return this
      __.object(this[k], __.return(o, this))
      return this }
-   head       (o) { this._.head       = o; return this}
-   router     (o) { this._.router     = o; return this}
    properties (o) { this._properties  = o; return this.assign('property',   o) }
-   style      (o) { return __.object(this, '_.style',   o) }
-   helpers    (o) { return __.object(this, '_.helpers', o) }
-   events     (o) { return __.object(this, '_.events',  o) }
-   methods    (o) { return __.object(this, '_.methods', o) }
    mongo      (o) {
         __.isArray(o) && (o = __.object({}, o, Array(o.length).fill({})))
         return __.object(this, '_.mongo', o) }
+   head       (o) { return __.object(this, '_.head',    o) }
+   router     (o) { return __.object(this, '_.router',  o) }
+   helpers    (o) { return __.object(this, '_.helpers', o) }
+   events     (o) { return __.object(this, '_.events',  o) }
+   methods    (o) { return __.object(this, '_.methods', o) }
+   style      (o) { return __.object(this, '_.style',   o) }
    onStartup  (f) { return __.object(this, '_.onStartup',   f) }
    onServer   (f) { return __.object(this, '_.onServer',    f) }
    onRendered (f) { return __.object(this, '_.onRendered',  f) }
@@ -67,7 +69,6 @@ class Module {
 
 class Parts {
    constructor(parts) {
-      console.log(parts)
       this.part = this.part || {}
       this.attrPart = this.attrPart || {}
       parts = __.return(parts, __.return(parts))

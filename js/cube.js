@@ -31,7 +31,7 @@ const mongoClient = (m, cs) => {
 const head = o => __.eachKeys(o, k => $('head').append(HTML.toHTML(HTML[k.toUpperCase()](o[k]))))
 
 const router = (o, m) => {
-    console.log('Router', o, )
+    // console.log('Router', o, )
     o.defaultLayout && (Router.configure({layoutTemplate: m._.name}), __.pop('defaultLayout'))
     o.layout        && __.reKey(o, 'layout', 'layoutTemplate')
     __.isEmpty(o)   || Router.route(m._.name, o)
@@ -50,15 +50,15 @@ Meteor.startup(() => {
     cube.installParts()
     __.keys(Sat.module).map(n => {
       _ = Sat.module[n]
-      _._.style                &&  cube.Style(_)
+      _._.style              &&  cube.Style(_._)
       ;(v = _._.head)        &&  head(v)
       ;(v = _._.router)      && (__.isEmpty(v) || router(v, _))
       ;(v = _._.mongo)       &&  mongoClient(_, v)
       ;(v = _._.onStartup)   &&  v.call(_, _)
       ;(v = _.property.path) &&  Router.route(n, {path: v, layoutTemplate: _.property.layout || 'layout'})
       ;(v = _.template())    && (Template[n] = new Template('Template.' + n, v))
-      ;(v = _._.events)         &&  Template[n] && Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
-      ;(v = _._.helpers)        &&  Template[n] && Template[n].helpers(v) // __.function(v)
+      ;(v = _._.events)      &&  Template[n] && Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
+      ;(v = _._.helpers)     &&  Template[n] && Template[n].helpers(v) // __.function(v)
       'onCreated onRendered onDestroyed'.split(' ').forEach(d => _._[d] && Template[n][d](_._[d])) }) }
     __.runMeteorStartup()
 })
