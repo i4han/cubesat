@@ -43,13 +43,14 @@ const settings_path    = add(dot_cubesat_path, 'settings.js')
 const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || home
 const paths2test   = 'client server lib public private resources'.split(' ')
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules] // the order is significant
+// third command
 const tasks = {
   env:      { call: () => show_env(),   dotsat: 0, test: 0, description: 'Show arguments and environment variables.' },
   paths:    { call: () => show_paths(), dotsat: 0, test: 0, description: 'Show working paths.' },
   args:     { call: () => show_args(),  dotsat: 0, test: 0, description: 'Show arguments.' },
   test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.' },
   init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
-  update:   { call: () => update(),     dotsat: 0, test: 0, description: 'Update cubesat' },
+  update:   { call: () => update(),     dotsat: 0, test: 0, description: 'Update cubesat', thirdCommand: 1 },
   help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
   create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
   run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.' },
