@@ -15,12 +15,12 @@ let attributeClass = (key, value) => __.isString(value) ? value.replace(/\*/g, _
 const htmlEntities = { '123': '{', '125': '}' }
 
 let displayValue = (v) =>
-  __.maybeHtmlEntity(v) ? v.replace(/&#([0-9]{3});/g, (m, $1) => $1 in htmlEntities ? htmlEntities[$1] : m) : v
+  __.isEnclosedBy(v, '&#', ';') ? v.replace(/&#([0-9]{3});/g, (m, $1) => $1 in htmlEntities ? htmlEntities[$1] : m) : v
 
 let mustacheAttr = (v, f) =>
   __.isEmpty(v) ? '' :
   __.isArray(v) ? () => v :
-  __.maybeMustache(v) ? v.split(/[{}]/).map( (v, i) => i % 2 === 1 ? f(v) : displayValue(v) ).filter( (v) => v ) :
+  __.isEnclosedBy(v, '{', '}') ? v.split(/[{}]/).map( (v, i) => i % 2 === 1 ? f(v) : displayValue(v) ).filter( (v) => v ) :
     displayValue(v)
 
 let blazeAttr = (_, obj) => {
