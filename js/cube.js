@@ -18,15 +18,19 @@ const mongoServer = (m, cs) => {
       cs[k].collections && mongoServer(m, cs[k].collections) }) }
       //__.serverMongoConnected(k)
 
-
+const subscribe   = (m, k) => {
+    console.log(k, __._db[k].subscribes)
+    __._db[k].subscribes.filter(f => __.isFunction(f)).map(f => f(m, __._db[k])) }
 const mongoClient = (m, cs) => {
   __.isArray(cs) && (console.log('array') || (cs = __.object({}, cs, Array(cs.length).fill({}))))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
       mongo.connected.push(k)
       __._db[k] = new Mongo.Collection(k)
-      Meteor.subscribe(k, cs[k].callback ? cs[k].callback.bind(m, m) : () => {})
-      cs[k].collections && mongoClient(m, cs[k].collections) })
-      m.collection = cs}
+      __._db[k].subscribes = []
+      cs[k].subscribe && __._db[k].subscribes.push( () => cs[k].subscribe(m))
+      __._db[k].handle = Meteor.subscribe(k, () => subscribe(m, k))
+      cs[k].collections && mongoClient(m, cs[k].collections) }) // shoud be in subscribe()
+      m.collection = cs} // ???
 
 const head = o => __.eachKeys(o, k => $('head').append(HTML.toHTML(HTML[k.toUpperCase()](o[k]))))
 
@@ -53,12 +57,14 @@ Meteor.startup(() => {
       _._.style              &&  cube.Style(_._)
       ;(v = _._.head)        &&  head(v)
       ;(v = _._.router)      && (__.isEmpty(v) || router(v, _))
-      ;(v = _._.mongo)       &&  mongoClient(_, v)
+      ;(v = _._.mongo)       &&  mongoClient(_.user, v)
       ;(v = _._.onStartup)   &&  v.call(_, _)
-      ;(v = _.property.path) &&  Router.route(n, {path: v, layoutTemplate: _.property.layout || 'layout'})
-      ;(v = _.template())    && (Template[n] = new Template('Template.' + n, v))
+      //;(v = _.property.path) &&  Router.route(n, {path: v, layoutTemplate: _.property.layout || 'layout'})
+      ;(v = _._.template)    && (Template[n] = new Template('Template.' + n, v))
       ;(v = _._.events)      &&  Template[n] && Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
       ;(v = _._.helpers)     &&  Template[n] && Template[n].helpers(v) // __.function(v)
+      ;(v = _._.onRendered)  &&  Template[n].onRendered(v) // __.function(v)
+      ;(v = _._.onStartup)   &&  v()
       'onCreated onRendered onDestroyed'.split(' ').forEach(d => _._[d] && Template[n][d](_._[d])) }) }
     __.runMeteorStartup()
 })

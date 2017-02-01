@@ -94,8 +94,8 @@ blaze.Include = (_, name, ...a) =>
     cube.includeAttr(_, name, a[0])
 
 ;['Each', 'With'].forEach(tag => blaze[tag] = (_, lookup, func) => {
-    __.isFunction(func) || console.log('blaze: arg3 must be a function')
-    Blaze[tag](() => cube.lookup(_, lookup), func) })
+//    __.isFunction(func) || console.log('blaze: arg3 must be a function')
+    return Blaze[tag](() => cube.lookup(_, lookup), func) })
 ;['If'].forEach(tag => blaze[tag] = (_, lookup, f_then, f_else) => Blaze[tag](() => cube.lookup(_, lookup), f_then, f_else))
 //blaze.Each = (_, lookup, func) => Blaze.Each(() => Spacebars.call(_.lookup(lookup)), func)
 let idclassKey = function(k) {  // don't use arrow function 'this'

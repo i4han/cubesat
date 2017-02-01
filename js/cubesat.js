@@ -14,7 +14,7 @@ class Module {
          else Sat.module[name] = this
       this._    = this._    || {}
       this.user = this.user || {}
-      this.property = {}
+    //   this.property = {}
     //   this._.router = {}
     //   this._.head   = {}
     //   this._.style  = {}
@@ -22,17 +22,17 @@ class Module {
     //   this._.events  = {}
     //   this._.methods = {}
     //   this._.mongo  = {}
-      this._.name  = this.user.name  = name
-      this._.label = this.user.label = __.capitalize(name) }
+      this.user.name  = this._.name  = name
+      this.user.label = this._.label = __.capitalize(name)
+  }
    name() { return this._.name }
    local(id) {
       let uniqueName = this.name() + (this._.hash ? '-' + this._.hash : '-local')
       return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
    template(t) {
     //   console.log(this._.name + ' from template')
-      if (!t) return this._template
-      this._template = t
-      return this
+      if (!t) return this._.template
+      return __.object(this, '_.template', t)
    }
    init(f) {
      this._init = f
@@ -41,21 +41,36 @@ class Module {
      if (__.isUndefined(o)) return this
      __.object(this[k], __.return(o, this))
      return this }
-   properties (o) { this._properties  = o; return this.assign('property',   o) }
+   properties (o) {
+       if (!o && this.user.Module) return this
+       this.user.Db        = __._db
+       this.user.Settings  = Sat.setting
+       this.user.Parts     = Sat.part
+       this.user.AttrParts = Sat.attrPart
+       this.user.Modules   = Sat.module
+       // add local and $
+       if (!o) return this
+       __.isFunction(o) && (o = o(this.user))
+       __.assign(this.user, o)
+       return this }
    mongo      (o) {
         __.isArray(o) && (o = __.object({}, o, Array(o.length).fill({})))
         return __.object(this, '_.mongo', o) }
-   head       (o) { return __.object(this, '_.head',    o) }
+   head       (o) {
+       __.isFunction(o) && (o = o(this.properties().user))
+       return __.object(this, '_.head',    o) }
    router     (o) { return __.object(this, '_.router',  o) }
-   helpers    (o) { return __.object(this, '_.helpers', o) }
+   helpers    (o) {
+       __.isFunction(o) && (o = o(this.properties().user))
+       return __.object(this, '_.helpers', o) }
    events     (o) { return __.object(this, '_.events',  o) }
    methods    (o) { return __.object(this, '_.methods', o) }
    style      (o) { return __.object(this, '_.style',   o) }
-   onStartup  (f) { return __.object(this, '_.onStartup',   f) }
-   onServer   (f) { return __.object(this, '_.onServer',    f) }
-   onRendered (f) { return __.object(this, '_.onRendered',  f) }
-   onDestroyed(f) { return __.object(this, '_.onDestroyed', f) }
-   onCreated  (f) { return __.object(this, '_.onCreated',   f) }
+   onStartup  (f) { return __.object(this, '_.onStartup',   f(this.properties().user)) }
+   onServer   (f) { return __.object(this, '_.onServer',    f(this.properties().user)) }
+   onRendered (f) { return __.object(this, '_.onRendered',  f(this.properties().user)) }
+   onDestroyed(f) { return __.object(this, '_.onDestroyed', f(this.properties().user)) }
+   onCreated  (f) { return __.object(this, '_.onCreated',   f(this.properties().user)) }
    fn(o) {
      __.eachKeys(o, k => this[k] = o[k].bind(this))
      return this }
@@ -86,13 +101,13 @@ class Settings {
       if (! __.isMeteorClient()) {
          settings = __.return(settings, __.return(settings))
          ;(f = o => __.keys(o).forEach(k => {
-            __.isObject(o[k]) && f(o[k])
+            __.isObject(o[k])   && f(o[k])
             __.isFunction(o[k]) && (o[k] = __.return(o[k], settings)) })
          )(settings)
          this.setting = settings
          typeof Sat !== 'undefined' && (Sat.setting = settings) }
-      else if (__.isEmpty(Sat.settings))
-        Sat.setting = Meteor.settings } }
+      else if (__.isEmpty(Sat.settings)) // settings?
+         Sat.setting = Meteor.settings } }
 
 
 class Cube {
