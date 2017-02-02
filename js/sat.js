@@ -127,8 +127,6 @@ const dotenv_conf = () => {
 let build_path, site_js, index_js_path, mobile_config_js, settings_json, client_path, lib_path
 let f, r, s
 
-__.require = f => delete require.cache[f] && require(f)
-
 const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
 
 if (site_path) {
