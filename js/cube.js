@@ -21,6 +21,7 @@ const mongoServer = (m, cs) => {
 const subscribe   = (m, k) => {
     console.log(k, __._db[k].subscribes)
     __._db[k].subscribes.filter(f => __.isFunction(f)).map(f => f(m, __._db[k])) }
+
 const mongoClient = (m, cs) => {
   __.isArray(cs) && (console.log('array') || (cs = __.object({}, cs, Array(cs.length).fill({}))))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
