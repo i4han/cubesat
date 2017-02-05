@@ -3,8 +3,13 @@
 // this variables -> this._
 // properties -> router
 // collections -> mongo
-
 typeof Meteor === "undefined" && (global.cube = {}, global.__ = require('underscore2'))
+
+__._Modules   = {}
+__._Settings  = {}
+__._Parts     = {}
+__._AttrParts = {}
+
 
 class Module {
    constructor(name) {
@@ -12,6 +17,7 @@ class Module {
          if (name in Sat.module)
             return Sat.module[name]
          else Sat.module[name] = this
+      __._Modules[name] = this
       this._    = this._    || {}
       this.user = this.user || {}
     //   this.property = {}
@@ -44,10 +50,12 @@ class Module {
    properties (o) {
        if (!o && this.user.Module) return this
        this.user.Db        = __._db
-       this.user.Settings  = Sat.setting
-       this.user.Parts     = Sat.part
-       this.user.AttrParts = Sat.attrPart
-       this.user.Modules   = Sat.module
+       if ('undefined' !== typeof Sat && Sat) { // error
+           this.user.Settings  = __._Settings
+           this.user.Parts     = __._Parts
+           this.user.AttrParts = __._AttrParts
+           this.user.Modules   = __._Modules
+       }
        // add local and $
        if (!o) return this
        __.isFunction(o) && (o = o(this.user))
@@ -92,7 +100,10 @@ class Parts {
          __.isAttrPartKey(k)     && (this.attrPart[k] = parts[k]) })
       if (typeof Sat !== 'undefined') {
          __.assign(Sat.part, this.part)
-         __.assign(Sat.attrPart, this.attrPart) } } }
+         __.assign(Sat.attrPart, this.attrPart) }
+     __.assign(__._Parts, this.part)
+     __.assign(__._AttrParts, this.attrPart)
+     } }
 
 class Settings {
    constructor(settings) {
@@ -105,9 +116,11 @@ class Settings {
             __.isFunction(o[k]) && (o[k] = __.return(o[k], settings)) })
          )(settings)
          this.setting = settings
-         typeof Sat !== 'undefined' && (Sat.setting = settings) }
-      else if (__.isEmpty(Sat.settings)) // settings?
-         Sat.setting = Meteor.settings } }
+         if (typeof Sat !== 'undefined') Sat.setting = settings
+         __._Settings = settings } // settings just once?
+      else if (__.isEmpty(Sat.settings)) {// settings?
+         Sat.setting = Meteor.settings
+         __._Settings = Meteor.settings } } }
 
 
 class Cube {
@@ -126,7 +139,9 @@ class Cube {
 class View {
    constructor(view) {
       this.view = view
-      __.keys(Sat.part).forEach(k => this[k] = Sat.part[k].bind(Sat.part, view)) } }
+      __.keys(__._Parts).forEach(k => this[k] = __._Parts[k].bind(__._Parts, view))
+      //__.keys(Sat.part).forEach(k => this[k] = Sat.part[k].bind(Sat.part, view))
+   } }
 
 __.Cube     = ()        => new Cube()
 __.Module   = name      => new Module(name)

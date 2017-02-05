@@ -32,6 +32,8 @@ findRoot = d => {
   return dir_list.join('/')
 }
 
+__.require = f => delete require.cache[f] && require(f)
+
 const dot_sat      = '.sat'
 const dot_cubesat  = '.cubesat'
 const dot_env      = '.env'

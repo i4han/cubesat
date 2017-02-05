@@ -46,15 +46,15 @@ const router = (o, m) => {
 Meteor.startup(() => {
   let v, _
   if (Meteor.isServer) {
-    __.keys(Sat.module).map(n => {
-      _ = Sat.module[n]
+    __.keys(__._Modules).map(n => {
+      _ = __._Modules[n]
       ;(v = _._.methods)     &&  Meteor.methods(v)
       ;(v = _._.mongo)       &&  mongoServer(_, v)
       ;(v = _._.onServer)    &&  v.call(_) }) }
   else if (Meteor.isClient) {
     cube.installParts()
-    __.keys(Sat.module).map(n => {
-      _ = Sat.module[n]
+    __.keys(__._Modules).map(n => {
+      _ = __._Modules[n]
       _._.style              &&  cube.Style(_._)
       ;(v = _._.head)        &&  head(v)
       ;(v = _._.router)      && (__.isEmpty(v) || router(v, _))
