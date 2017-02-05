@@ -51,7 +51,8 @@ class Module {
        if (!o && this.user.Module) return this
        this.user.Db        = __._db
        if ('undefined' !== typeof Sat && Sat) { // error
-           this.user.Settings  = __._Settings
+           // this.user.Settings  = __._Settings // has not loaded yet!
+           this.user.Settings  = Meteor.settings
            this.user.Parts     = __._Parts
            this.user.AttrParts = __._AttrParts
            this.user.Modules   = __._Modules
@@ -110,17 +111,19 @@ class Settings {
       let f
 //      if (__.isMeteorServer()) {
       if (! __.isMeteorClient()) {
-         settings = __.return(settings, __.return(settings))
-         ;(f = o => __.keys(o).forEach(k => {
-            __.isObject(o[k])   && f(o[k])
-            __.isFunction(o[k]) && (o[k] = __.return(o[k], settings)) })
-         )(settings)
-         this.setting = settings
+        //  settings = __.return(settings, __.return(settings))
+        //  ;(f = o => __.keys(o).forEach(k => {
+        //     __.isObject(o[k])   && f(o[k])
+        //     __.isFunction(o[k]) && (o[k] = __.return(o[k], settings)) })
+        //  )(settings)
+        //  this.setting = settings
+         this.setting = __.return(settings, __.return(settings))
          if (typeof Sat !== 'undefined') Sat.setting = settings
-         __._Settings = settings } // settings just once?
-      else if (__.isEmpty(Sat.settings)) {// settings?
-         Sat.setting = Meteor.settings
-         __._Settings = Meteor.settings } } }
+         __._Settings = settings } // settings just once? should be __.object
+      else {
+          if ('undefind' !== typeof Sat && __.isEmpty(Sat.settings)) Sat.setting = Meteor.settings
+          __._Settings = Meteor.settings }
+          } }
 
 
 class Cube {
