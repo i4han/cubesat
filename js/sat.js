@@ -2,6 +2,8 @@
 var indexOf = [].indexOf
 
 //const nconf    = require('nconf')
+// Settings should be in lib/settings.js
+// so you don't need to generate settings.json
 const fs       = require('fs')
 const path     = require('path')
 const ps       = require('ps-node')
