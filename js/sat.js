@@ -796,9 +796,9 @@ test   = () => {
 }
 
 const _git_push = (commit, ...paths) =>
-    spawn_command('git', 'add', ['.'], paths[0]).on(  'exit', () =>
-        ( spawn_command('git', 'commit', ['-m', commit], paths[0]) ).on(  'exit', () =>
-            ( spawn_command('git', 'push', [], paths[0]) ).on(  'exit', () =>
+    spawn_command('git', 'add', ['.'], paths[0]).on(  'exit', (code, signal) =>
+        console.log(code, signal) || spawn_command('git', 'commit', ['-m', commit], paths[0]).on(  'exit', () =>
+            spawn_command('git', 'push', [], paths[0]).on(  'exit', () =>
                 paths[1] && _git_push.apply( {}, [commit].concat(paths.slice(1)) )  )  )  )
 
 const _npm_publish_    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
