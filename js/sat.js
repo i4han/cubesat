@@ -2,11 +2,9 @@
 var indexOf = [].indexOf
 
 //const nconf    = require('nconf')
-<<<<<<< HEAD
-=======
 // Settings should be in lib/settings.js
 // so you don't need to generate settings.json
->>>>>>> temp
+
 const fs       = require('fs')
 const path     = require('path')
 const ps       = require('ps-node')
@@ -63,11 +61,7 @@ const tasks = {
   create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
   run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.', settings: 1},
   gitPush:  { call: () => git_push(),   dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
-<<<<<<< HEAD
-  dotEnv:   { call: () => export_dot_env(), dotsat: 1, test: 0, description: 'Export .env $. <(sat dot-env)'},
-=======
   dotEnv:   { call: () => export_dot_env(), dotsat: 0, test: 0, description: 'Export .env $. <(sat dot-env)'},
->>>>>>> temp
   deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
   //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
   settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings', settings: 1},
@@ -830,15 +824,10 @@ const _publish = (path, path2) => {
         (f, d) => _npm_publish_(path,
           __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
 
-<<<<<<< HEAD
-const export_dot_env = () => {
-    fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
-        console.log(data.replace(/^\s*([a-zA-Z])/mg, "export $1")) )}
-=======
 const export_dot_env = () =>
     fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
         console.log(data.replace(/^\s*([a-zA-Z])/mg, "export $1")) )
->>>>>>> temp
+
 const _add_version = (path) => {
     editFile(add(path, package_js),
       (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
@@ -859,12 +848,8 @@ const show_args  = () => {
 const show_paths = () =>
     __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
 const show_env = () =>
-<<<<<<< HEAD
-    'MONGO_URL MAIL_URL NODE_MODULES PATH'.split(' ').map(k => console.log(`   $${__.padLeft(12, k)} = ` + process.env[k]))
-=======
     fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
         data.replace(/^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
             console.log(`   $${__.padLeft(22, p1)} = ` + process.env[p1]) ))
->>>>>>> temp
 
 task_command.call()
