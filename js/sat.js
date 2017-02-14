@@ -12,6 +12,7 @@ const cs       = require('coffee-script')
 const dotenv   = require('dotenv')
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
 const __       = require('cubesat')
+const in$      = require('incredibles')
 
 cs.register()
 let command      = process.argv[2]
@@ -27,6 +28,18 @@ const lib_dir      = 'lib'
 const client_dir   = 'client'
 const public_dir   = 'public'
 const packages_dir = 'packages'
+
+let taskBook = in$({})
+
+class Task {
+    constructor (name, fn, options) {
+        this._name = name
+        this._fn = fn
+        this._ = options || {}
+        taskBook[name] = in$(this) }
+}
+
+// const task = (name, fn, options) => new Task(name, fn, options)
 
 findRoot = d => {
   let dir_list = process.cwd().split('/')
@@ -49,42 +62,9 @@ const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || hom
 const paths2test   = 'client server lib public private resources'.split(' ')
 const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules] // the order is significant
 // third command
-const tasks = {
-  env:      { call: () => show_env(),   dotsat: 0, test: 0, description: 'Show arguments and environment variables.' },
-  updateEnv: { call: () => update_env(),   dotsat: 0, test: 0, description: 'Update environment variables from .env file.' },
-  paths:    { call: () => show_paths(), dotsat: 0, test: 0, description: 'Show working paths.' },
-  args:     { call: () => show_args(),  dotsat: 0, test: 0, description: 'Show arguments.' },
-  test:     { call: () => test(),       dotsat: 1, test: 0, description: 'Test environment.', settings: 1},
-  init:     { call: () => init(),       dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
-  update:   { call: () => update(),     dotsat: 0, test: 0, description: 'Update cubesat', thirdCommand: 1 },
-  help:     { call: () => help(),       dotsat: 0, test: 0, description: 'Help message.' },
-  create:   { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
-  run:      { call: () => meteor_run(), dotsat: 1, test: 0, description: 'Run meteor server.', settings: 1},
-  gitPush:  { call: () => git_push(),   dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
-  dotEnv:   { call: () => export_dot_env(), dotsat: 0, test: 0, description: 'Export .env $. <(sat dot-env)'},
-  deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
-  //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
-  settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings', settings: 1},
-  version:  { call: () => version(),    dotsat: 0, test: 0, description: 'Print sat version', arg0: 1 },
-  publish:  { call: () => publish(),    dotsat: 0, test: 0, description: 'Publish Meteor packages.' },
-  coffee:   { call: () => coffee_compile(),       dotsat: 1, test: 0, description: 'Watching coffee files to complie.' },
-  mobileConfig:  { call: () => mobile_config(),   dotsat: 0, test: 1, description: 'Create mobile-config.js' },
-  updateAll:     { call: () => update_all(),      dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' },
-  createTest:    { call: () => create_test(),     dotsat: 0, test: 1, description: 'Create test directory.' },
-  installMobile: { call: () => install_mobile(),  dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' },
-  addVersion:    { call: () => add_version(),     dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 },
-  npmRefresh:    { call: () => npm_refresh(),     dotsat: 0, test: 1, description: 'Publish and update npm cubesat packages.' },
-  npmUpdate:     { call: () => npm_update(),      dotsat: 0, test: 0, description: 'Update most recent cubesat npm package.' },
-  npmPublish:    { call: () => npm_publish(),     dotsat: 0, test: 1, description: 'Publish cubesat to npm' },
-  npmInstall:    { call: () => npm_install(),     dotsat: 0, test: 1, description: 'Install local cubesat' },
-  meteorRefresh: { call: () => meteor_refresh(),  dotsat: 1, test: 1, description: 'Publish and update meteor cubesat packages.' },
-  meteorUpdate:  { call: () => meteor_update(),   dotsat: 1, test: 0, description: 'Update most recent meteor cubesat packages.' },
-  meteorPublish: { call: () => meteor_publish(),  dotsat: 0, test: 1, description: 'Publish cubesat to meteor' }
-}
 
-const options = {
-  t: { full: 'with-test', command: ['run', 'coffee', 'install-mobile'], description: 'Excute with test.' },
-  T: { full: 'for-test',  command: ['run', 'coffee', 'install-mobile'], description: 'Excute for test.' } }
+let tasks, options
+main()
 
 if (! command) command = 'help'  // empty command means 'sat help'
 const task_command = tasks[__.camelize(command)]
@@ -113,14 +93,7 @@ if (test_path) {
   sq_package_path      = add(test_packages_path, "isaac:style-query")
   u2_package_path      = add(test_packages_path, 'isaac:underscore2') }
 
-const path_info = {
-    site:     { type: "site",    name: "site",        git: 1, path: site_path },
-    test:     { type: "test",    name: "test",        git: 0, path: test_path },
-    cubesat:  { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path, publish: 1 },
-    jqx:      { type: "package", name: "jquery-x",    git: 1, path: jqx_package_path },
-    sq:       { type: "package", name: "style-query", git: 1, path: sq_package_path },
-    u2:       { type: "package", name: "underscore2", git: 1, path: u2_package_path, publish: 1 } }
-
+const path_info = in$( pathInfo() )
 const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
 const publish_paths = __.keys(path_info).filter(k => path_info[k].publish).map(k => path_info[k].path)
 
@@ -796,60 +769,139 @@ test   = () => {
   meteor_run(test_path, '3300')
 }
 
-const _git_push = (commit, ...paths) =>
-    spawn_command('git', 'add', ['.'], paths[0]).on(  'exit', code =>
-        spawn_command('git', 'commit', ['-m', commit], paths[0]).on(  'exit', code => {
-            if (code)
-                paths[1] && _git_push.apply( {}, [commit].concat(paths.slice(1)) )
-            else spawn_command('git', 'push', [], paths[0]).on(  'exit', code =>
-                paths[1] && _git_push.apply( {}, [commit].concat(paths.slice(1)) )  )  }  )  )
 
 const _npm_publish_    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
 const _meteor_publish_ = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', __.isFunction(after) ? after : () => {} )
-const getVersion = path => __.require(path).version
-const incVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
 const editFile = (file, func, action) =>
     fs.readFile(file, 'utf8', (e, data) => error(e) ||
         fs.writeFile(file, data = func(file, data), 'utf8', e => error(e) || (action && __.isFunction(action, action(file, data)))))
-let ver
-const _incVersionInPackageFile_ = (file, data) =>
-    data.replace(new RegExp('"version":\\s*"' + (ver = getVersion(file)) + '"'), '"version": "' + incVersion(ver) + '"')
 
-const _publish = (path, path2) => {
+const __publish = (paths) => {
+    let path = paths.shift()
   editFile(add(path, package_js),
     (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
     (f, d) => _meteor_publish_(path, () =>
       editFile(add(path, package_json),
         _incVersionInPackageFile_,
         (f, d) => _npm_publish_(path,
-          __.isString(path2) ? () => _publish(path2) : () => {} )) )) }
+          paths.length ? () => _publish(paths) : () => {} )) )) }
 
-const export_dot_env = () =>
+const __export_dot_env = () =>
     fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
         console.log(data.replace(/^\s*([a-zA-Z])/mg, "export $1")) )
 
-const _add_version = (path) => {
-    editFile(add(path, package_js),
-      (f, d) => _incVersionInPackageFile_(add(path, package_json), d),
-      () => editFile(add(path, package_json), _incVersionInPackageFile_, () => version() )) }
+const __update      = () => spawn_command('npm', 'install', ['.',  '--prefix', node_modules], cubesat_package_path)
+const __git_push    = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
 
-const update      = () => spawn_command('npm', 'install', ['.',  '--prefix', node_modules], cubesat_package_path)
-const git_push    = () => _git_push.apply({}, [arg0].concat(__.keys(path_info).filter(k => path_info[k].git) .map(k => path_info[k].path)))
-const publish     = () =>  _publish.apply({}, publish_paths)
-const version     = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
-const add_version = () => _add_version(path_info[argv._[0]].path)
-const help        = () =>
-    __.keys(tasks)    .map(k => console.log('  ', __.padLeft(15, __.dasherize(k)), tasks[k].description))
-const init = () => ''
 
-const show_args  = () => {
-    console.log('   arguments:   ', argv)
-    __.keys(options)  .map(k => console.log('  ', __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description)) }
-const show_paths = () =>
-    __.keys(path_info).map(k => console.log('  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path))
-const show_env = () =>
+
+function main () {
+
+let ver
+const getVersion = path => __.require(path).version
+const addVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
+const version = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
+const increaseVersion = (file, data) =>
+    data.replace(new RegExp('"version":\\s*"' + (ver = getVersion(file)) + '"'), '"version": "' + addVersion(ver) + '"')
+const gitPush = (commit, ...paths) =>
+    spawn_command('git', 'add', ['.'], paths[0]).on(  'exit', code =>
+        spawn_command('git', 'commit', ['-m', commit], paths[0]).on(  'exit', code => {
+            if (code)
+                paths[1] && gitPush.apply( {}, [commit].concat(paths.slice(1)) )
+            else spawn_command('git', 'push', [], paths[0]).on(  'exit', code =>
+                paths[1] && gitPush.apply( {}, [commit].concat(paths.slice(1)) )  )  }  )  )
+
+
+new Task(  'env',  () =>
+    fs.readFile(  add(home, dot_env), 'utf8', (e, data) => error(e) ||
+        data.replace(  /^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
+            console.log( `  $${__.padLeft(22, p1)} = ` + process.env[p1] )  )  ),
+    { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
+new Task(  'paths', () =>
+    path_info.keys().map(  k => console.log(  '  ',
+        __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path)  ),
+    { dotsat: 0, test: 0, description: 'Show working paths.' } )
+new Task(  'args', () =>
+    console.log('   arguments:   ', argv) ||
+    options.keys().map(  k => console.log(  '  ',
+        __.padLeft(15, `-${k}, --${options[k].full}`), __.padLeft(40, options[k].command), options[k].description )),
+    { dotsat: 0, test: 0, description: 'Show arguments.' }  )
+new Task(  'help', () =>
+    tasks.keys().map( k => console.log('  ', __.padLeft(15, __.dasherize(k)), (tasks[k].description || taskBook[k]._.description)) ),
+    { dotsat: 0, test: 0, description: 'Help message.' }  )
+new Task(  'add-version', () => {
+    let path = path_info[argv._[0]].path
+    editFile( add(path, package_js), (f, d) => increaseVersion(add(path, package_json), d), () =>
+        editFile( add(path, package_json), increaseVersion, () => version() )) },
+    { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
+new Task(  'version', () => version(),
+    { dotsat: 0, test: 0, description: 'Print sat version' }  )
+new Task(  'publish', () => {
+    let publish = paths => {
+        let path = paths.shift()
+        editFile(  add(path, package_js),
+            (f, d) => increaseVersion(add(path, package_json), d),
+            (f, d) => _meteor_publish_(path, () =>
+                editFile(add(path, package_json), increaseVersion, (f, d) => _npm_publish_(path,
+                    paths.length ? () => publish(paths) : () => {} )) )) }
+    publish(publish_paths)},
+    {dotsat: 0, test: 0, description: 'Publish Meteor packages.' })
+new Task(  'update', () =>
+    spawn_command('npm', 'install', ['.',  '--prefix', node_modules], cubesat_package_path),
+    { dotsat: 0, test: 0, description: 'Update cubesat', thirdCommand: 1 })
+new Task(  'dot-env', () =>
     fs.readFile(add(home, dot_env), 'utf8', (e, data) => error(e) ||
-        data.replace(/^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
-            console.log(`   $${__.padLeft(22, p1)} = ` + process.env[p1]) ))
+        console.log(data.replace(/^\s*([a-zA-Z])/mg, "export $1")) ),
+    { dotsat: 0, test: 0, description: 'Print export .env $. <(sat dot-env)' })
+new Task(  'git-push', () =>
+    gitPush.apply({}, [arg0].concat( path_info.keys().filter(k => path_info[k].git).map(k => path_info[k].path) )),
+    { dotsat: 1, test: 0, description: 'Git push.', arg0: 1 })
+tasks = in$({
+  env:      { dotsat: 0, test: 0 },
+  // updateEnv: { call: () => update_env(),    dotsat: 0, test: 0, description: 'Update environment variables from .env file.' },
+  paths:    { dotsat: 0, test: 0 },
+  args:     { dotsat: 0, test: 0 },
+  test:     { call: () => test(),           dotsat: 1, test: 0, description: 'Test environment.', settings: 1},
+  // init:     { call: () => init(),           dotsat: 0, test: 0, description: 'Init .cubesat. (Not implemented yet)' },
+  update:   {dotsat: 0, test: 0, thirdCommand: 1 },
+  help:     { dotsat: 0, test: 0 },
+  create:   { call: () => create(),         dotsat: 0, test: 0, description: 'Create a project.' },
+  run:      { call: () => meteor_run(),     dotsat: 1, test: 0, description: 'Run meteor server.', settings: 1},
+  gitPush:  { call: () => git_push(),       dotsat: 1, test: 0, description: 'Git push.', arg0: 1},
+  dotEnv:   { dotsat: 0, test: 0},
+  deploy:   { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
+  //build:    { call: () => build(),    dotsat: 1, test: 0, description: 'Build meteor client files.' },
+  settings: { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings', settings: 1},
+  version:  {dotsat: 0, test: 0, arg0: 1 },
+  publish:  {dotsat: 0, test: 0},
+  // coffee:   { call: () => coffee_compile(),       dotsat: 1, test: 0, description: 'Watching coffee files to complie.' },
+  mobileConfig:  { call: () => mobile_config(),   dotsat: 0, test: 1, description: 'Create mobile-config.js' },
+  updateAll:     { call: () => update_all(),      dotsat: 0, test: 0, description: 'Update most recent npm and meteor package.' },
+  createTest:    { call: () => create_test(),     dotsat: 0, test: 1, description: 'Create test directory.' },
+  installMobile: { call: () => install_mobile(),  dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' },
+  addVersion:    {dotsat: 0, test: 0, arg0: 1 },
+  npmRefresh:    { call: () => npm_refresh(),     dotsat: 0, test: 1, description: 'Publish and update npm cubesat packages.' },
+  npmUpdate:     { call: () => npm_update(),      dotsat: 0, test: 0, description: 'Update most recent cubesat npm package.' },
+  npmPublish:    { call: () => npm_publish(),     dotsat: 0, test: 1, description: 'Publish cubesat to npm' },
+  npmInstall:    { call: () => npm_install(),     dotsat: 0, test: 1, description: 'Install local cubesat' },
+  meteorRefresh: { call: () => meteor_refresh(),  dotsat: 1, test: 1, description: 'Publish and update meteor cubesat packages.' },
+  meteorUpdate:  { call: () => meteor_update(),   dotsat: 1, test: 0, description: 'Update most recent meteor cubesat packages.' },
+  meteorPublish: { call: () => meteor_publish(),  dotsat: 0, test: 1, description: 'Publish cubesat to meteor' }
+})
 
-task_command.call()
+options = in$({
+  t: { full: 'with-test', command: ['run', 'coffee', 'install-mobile'], description: 'Excute with test.' },
+  T: { full: 'for-test',  command: ['run', 'coffee', 'install-mobile'], description: 'Excute for test.'  }  })
+}
+
+function pathInfo () {
+    return {
+    site:     { type: "site",    name: "site",        git: 1, path: site_path },
+    test:     { type: "test",    name: "test",        git: 0, path: test_path },
+    cubesat:  { type: "package", name: "cubesat",     git: 1, path: cubesat_package_path, publish: 1 },
+    jqx:      { type: "package", name: "jquery-x",    git: 1, path: jqx_package_path },
+    sq:       { type: "package", name: "style-query", git: 1, path: sq_package_path },
+    u2:       { type: "package", name: "underscore2", git: 1, path: u2_package_path, publish: 1 } }
+}
+
+taskBook[command] ? taskBook[command]._fn() : task_command.call()
