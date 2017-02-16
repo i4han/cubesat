@@ -1,6 +1,6 @@
 {
     "name": "cubesat",
-    "version": "0.6.44",
+    "version": "0.6.49",
     "os" : [ "!win32" ],
     "description": "sat: cubesat utility and library",
     "main": "js/cubesat.js",
@@ -18,17 +18,8 @@
         "Stu Pae <stu.pae@gmail.com>"
     ],
     "dependencies": {
-        "coffee-script": "*",
-        "stylus": "*",
-        "ps-node": "*",
-        "eco": "*",
-        "async": "*",
-        "nconf": "*",
-        "absurd": "*",
         "dotenv": "*",
-        "minimist": "*",
-        "busboy": "*",
-        "cloudinary": "*",
+        "incredibles": "*",
         "underscore2": "*"
     },
     "repository": {
