@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-//const nconf    = require('nconf')
 // Settings should be in lib/settings.js
 // so you don't need to generate settings.json
 
@@ -14,7 +13,7 @@ const in$      = require('incredibles')
 let command      = process.argv[2]
 const argv         = require('minimist')(process.argv.slice(3))
 const add          = path.join
-const home         = process.env.HOME
+const home         = in$(process.env.HOME)
 const cwd          = process.cwd()
 const coffee_ext   = '.coffee'
 const index_js     = 'index.js'
@@ -26,37 +25,35 @@ const public_dir   = 'public'
 const packages_dir = 'packages'
 
 let taskBook = in$({})
-
 class Task {
     constructor (name, fn, options) {
         this._name = name
         this._fn = fn
         this._ = options || {}
-        taskBook[name] = in$(this) }
-}
+        taskBook[name] = in$(this) }  }
 
-findRoot = d => {
-  let dir_list = process.cwd().split('/')
-  while ( dir_list.length && ! fs.existsSync( add(dir_list.join('/'), d) ) )
-    dir_list.pop()
-  return dir_list.join('/')  }
-
-__.require = f => delete require.cache[f] && require(f)
+findDir = d => in$(process.cwd().split('/')).concat('')
+    .reduce( ( (a,v,i,ar) => a.insert(i, ar.slice(0, -i - 1) ) ), in$([]) )
+    .firstValue( v => fs.existsSync( add(v.join('/'), d) ) )
+    .typeof('array', v => in$(v.join('/')), v => v)
 
 const dot_sat      = '.sat'
 const dot_cubesat  = '.cubesat'
 const dot_env      = '.env'
-const site_path    = findRoot(dot_sat)
-const dot_sat_path = add(site_path, dot_sat)
-const cubesat_path = findRoot(dot_cubesat)
-const dot_cubesat_path = add(cubesat_path || home, dot_cubesat) // should be error? .cubesat doesn't exist?
-const settings_path    = add(dot_cubesat_path, 'settings.js')
-const node_modules = process.env.NODE_MODULES || findRoot('node_modules') || home
+const site_path    = findDir(dot_sat)    .is(false, '', v => v)
+const dot_sat_path = site_path.path(dot_sat)
+const cubesat_path = findDir(dot_cubesat).is(false, home, v => v)
+const dot_cubesat_path = cubesat_path.path(dot_cubesat)  // should be error? .cubesat doesn't exist?
+const settings_path    = dot_cubesat_path.path('settings.js')
+const node_modules = process.env.NODE_MODULES || findDir('node_modules') || home
 const paths2test   = 'client server lib public private resources'.split(' ')
-const paths2watch  = [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path, node_modules] // the order is significant
-// third command
+const dot_env_path = in$( [home, cubesat_path, dot_cubesat_path, site_path, dot_sat_path] )
+    .firstValue( v => fs.existsSync( v.path(dot_env) ) )
+dot_env_path && dotenv.config( {path: dot_env_path} )
 
 let tasks, options
+__.require = f => delete require.cache[f] && require(f)
+
 main()
 
 if (! command) command = 'help'  // empty command means 'sat help'
@@ -73,41 +70,35 @@ task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat 
 task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
 
 const test_dir = task_command.test && arg0 ? arg0 : 'test'
-const test_path = add(cubesat_path, test_dir)
+const test_path = cubesat_path.path(test_dir)
 task_command.test   && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
 
 if (test_path) {
-  test_client_path     = add(test_path, client_dir)
-  test_lib_path        = add(test_path, lib_dir)
-  test_public_path     = add(test_path, public_dir)
-  test_packages_path   = add(test_path, packages_dir)
-  cubesat_package_path = add(test_packages_path, 'isaac:cubesat')
-  jqx_package_path     = add(test_packages_path, "isaac:jquery-x")
-  sq_package_path      = add(test_packages_path, "isaac:style-query")
-  u2_package_path      = add(test_packages_path, 'isaac:underscore2') }
+  test_client_path     = test_path.path(client_dir)
+  test_lib_path        = test_path.path(lib_dir)
+  test_public_path     = test_path.path(public_dir)
+  test_packages_path   = test_path.path(packages_dir)
+  cubesat_package_path = test_packages_path.path('isaac:cubesat')
+  jqx_package_path     = test_packages_path.path("isaac:jquery-x")
+  sq_package_path      = test_packages_path.path("isaac:style-query")
+  u2_package_path      = test_packages_path.path('isaac:underscore2') }
 
 const path_info = in$( pathInfo() )
-const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
-// const publish_paths = __.keys(path_info).filter(k => path_info[k].publish).map(k => path_info[k].path)
+// const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
 
-const dotenv_conf = () => {
-    let last_path, paths = paths2watch
-    while (paths.length && ! fs.existsSync(add(last_path = paths.shift(), '.env'))) {}
-    last_path.length && dotenv.config({path: last_path}) }   // dotenv has not used yet.
-
-let build_path, site_js, index_js_path, mobile_config_js, settings_json, client_path, lib_path
+let site_js, index_js_path, mobile_config_js, settings_json, client_path, lib_path
 let f, r, s
 
 const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
 
 if (site_path) {
-  build_path    = site_path
-  site_js       = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
-  index_js_path    = add(site_path, index_js)
-  mobile_config_js = add(site_path, 'mobile-config.js')
-  settings_json    = add(site_path, '.settings.json')
-  client_path      = add(site_path, client_dir)
-  lib_path         = add(site_path, lib_dir)
+  // build_path    = site_path
+  // site_js       = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
+  index_js_path    = site_path.path(index_js)
+  mobile_config_js = site_path.path('mobile-config.js')
+  settings_json    = site_path.path('.settings.json')
+  client_path      = site_path.path(client_dir)
+  lib_path         = site_path.path(lib_dir)
 
   init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(index_js_path))
   task_command.settings && init_settings() }
@@ -118,466 +109,35 @@ const settings = () =>
         (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
             fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
 
-const cd = d => process.chdir(d)
+const cd = d => process.chdir(d.valueOf())
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 
 const spawn_command = (bin, command, args, path) => {
   console.log('  ', ([bin, command].concat(args)).join(' '))
-  path && ( cd(path) || console.log('  ', path) )
+  path && ( cd(path) || console.log('  ', path.valueOf()) )
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
-// var Settings, __RmCoffee_paths, __commands, __func, __rmdir, __start_up, _tagLine
-// var addAttribute, attributeBracket, attributeClass, attributeParse, attributes, baseUnits, block, build
-// var codeLine, codeStr, coffee, coffee_clean, create, create_test, cssDefaults, cubesat_package_path
-// var deploy, directives, env, findRoot, fix_later__coffee_compile, fixup
-// var github_url, gitpass, htmlAttributes, htmlNoEndTags
-// var idClassKey, includeAttributes, indentStyle, indexSettings, init_settings, install_mobile, ionAttributes, isHtmlAttribute
-// var mcTable, mc_obj, meteor_create , meteor_publish, meteor_refresh, meteor_update
-// var mobile_config, my_packages
-// var newTab, npm_install, npm_publish, npm_refresh, npm_update, rePublish, readWrite, ref1, run
-// var seperators, strOrObj, styleLoop, styleMediaQuery
-// var tagLine, task, test, test_client_path, test_lib_path, test_packages_path, test_public_path, toStyle
-// var update_all, with_test, writeBuild
-
-var indexOf = [].indexOf
-
-mobile_config = function() {
-  var data, o;
-  settings();
-  init_settings();
-  data = __.keys(o = Settings.app).map(function(k) {
-    var ref2, ref3;
-    if ((ref2 = mcTable[k]) != null ? ref2.list : void 0) {
-      return __.keys(o[k]).map(function(l) {
-        return 'App.' + k + '("' + l + '", ' + strOrObj(o[k][l]) + ');';
-      }).join('\n') + '\n\n';
-    } else if (__.isArray(o[k])) {
-      return o[k].map(function(l) {
-        return 'App.' + k + '("' + l + '");';
-      }).join('\n') + '\n\n';
-    } else {
-      return 'App.' + k + '({' + (((ref3 = mcTable[k]) != null ? ref3.f : void 0) || mc_obj)(o[k]) + '\n});\n\n';
-    }
-  }).join('');
-  return fs.readFile(mobile_config_js, 'utf-8', function(e, d) {
-    return d === data || fs.writeFile(mobile_config_js, data, function(e) {
-      return console.log(new Date() + ' ' + mobile_config_js + ' is written.')
-    })
-  })
-}
+// var indexOf = [].indexOf
 
 /*
-mc_obj = function(o) {
-  return '\n' + __.keys(o).map(function(k) {
-    return '   ' + k + ': "' + o[k] + '"';
-  }).join(',\n');
-};
-
-mcTable = {
-  setPreference:   { list: true },
-  configurePlugin: { list: true }
-}
-
-strOrObj = function(o) {
-  if (__.isObject(o)) {
-    return '{\n' + __.keys(o).map(function(k) {
-      return '   ' + k + ': "' + o[k] + '"';
-    }).join(',\n') + '\n}';
-  } else {
-    return '"' + o + '"';
-  }
-};
-
-writeBuild = function(it, data) {
-  var fwrite;
-  if (__.isUndefined(data) || (__.isString(data) && data.length === 0)) {
-    return fs.unlink(add(client_path, it.file), function(e) {
-      return e || console.log((new Date) + ' ' + it.file + ' has removed');
-    });
-  } else {
-    return fs.readFile(fwrite = add(client_path, it.file), 'utf8', function(err, d) {
-      data = (it.header || '') + data + (it.footer || '');
-      return ((d == null) || data !== d) && fs.writeFile(fwrite, data, function(e) {
-        return console.log(new Date(), fwrite);
-      });
-    });
-  }
-};
-
-fixup = function(v) {
-  var r;
-  switch (false) {
-    case !(v == null):
-      return {};
-    case !__.isString(v):
-      return __.object({}, v, '');
-    case !__.isFunction(v):
-      if (__.isScalar(r = __["return"](v, this))) {
-        return r;
-      } else {
-        return fixup.call(this, r);
-      }
-    case !__.isArray(v):
-      return v.reduce((function(o, w) {
-        return __.assign(o, fixup.call(this, w));
-      }), {});
-    case !__.isObject(v):
-      return __.reduceKeys(v, {}, (function(_this) {
-        return function(o, k) {
-          if ('$' === k[0] && k in Parts) {
-            return __.assign(o, fixup.call(_this, Parts[k].call(_this, v[k])));
-          } else {
-            return __.object(o, k, (__.isScalar(r = v[k]) ? r : fixup.call(_this, r)));
-          }
-        };
-      })(this));
-  }
-};
-
-seperators = {
-  jade: '',
-  jade$: ''
-};
-
-baseUnits = {
-  zIndex: '',
-  fontWeight: ''
-};
-
-newTab = '_';
-
-cssDefaults = function(obj) {
-  if (!__.isObject(obj)) {
-    return obj;
-  }
-  __.keys(obj).forEach(function(k) {
-    var ok;
-    return obj[k] = (function() {
-      switch (false) {
-        case 0 !== (ok = obj[k]):
-          return '0';
-        case !__.isObject(ok):
-          return cssDefaults(ok);
-        case !__.isNumber(ok):
-          return String(ok) + (k in baseUnits ? baseUnits[k] : 'px');
-        default:
-          return ok;
-      }
-    })();
-  });
-  return obj;
-};
-
-idClassKey = function(key, s) {
-  var r;
-  if (s == null) {
-    s = '';
-  }
-  while ((r = new RegExp(/\[(#?[a-z]+[0-9]+)\]/)).test(key)) {
-    key = key.replace(r, (function(_this) {
-      return function(m, $1) {
-        return __.key2id.call(_this, $1);
-      };
-    })(this));
-  }
-  switch (false) {
-    case !__.check('id', key):
-      return '#' + __.key2id.call(this, key);
-    case !__.check('class', key):
-      return '.' + __.key2class(key);
-    case !__.check('id&class', key):
-      return key.split('_').map((function(_this) {
-        return function(a, i) {
-          switch (false) {
-            case '' !== a:
-              return null;
-            case !__.check('id', a):
-              return '#' + __.key2id.call(_this, a);
-            case !__.check('class', '_' + a):
-              return '.' + __.key2class(a);
-            default:
-              return console.error('Unknown ID or class:', a);
-          }
-        };
-      })(this)).filter(function(f) {
-        return f;
-      }).join(s);
-    default:
-      return key;
-  }
-};
-
-styleMediaQuery = function(k) {
-  return k;
-};
-
-styleLoop = function(obj) {
-  return __.reduceKeys(obj, {}, (function(_this) {
-    return function(o, k) {
-      var idk;
-      switch (false) {
-        case k[0] !== '@':
-          return __.object(o, styleMediaQuery(k), styleLoop.call(_this, obj[k]));
-        case !(k in Parts):
-          return __.assign(o, Parts[k].call(_this, obj[k]));
-        case k === (idk = idClassKey.call(_this, k)):
-          return __.object(o, idk, obj[k]);
-        default:
-          return __.object(o, k, obj[k]);
-      }
-    };
-  })(this));
-};
-
-toStyle = function(d) {
-  var obj;
-  return cssDefaults(__.reduceKeys((obj = fixup.call(this, this[d])), {}, (function(_this) {
-    return function(o, k) {
-      return __.object(o, idClassKey.call(_this, k, ' '), styleLoop.call(_this, obj[k]));
-    };
-  })(this)));
-};
-
-indentStyle = function(obj, depth) {
-  if (depth == null) {
-    depth = 1;
-  }
-  if (!__.isObject(obj)) {
-    return obj;
-  }
-  return __.keys(obj).map(function(key) {
-    var value;
-    return Array(depth).join(__.indentString || '  ') + (__.isObject(value = obj[key]) ? [key, indentStyle(value, depth + 1)].join('\n') : key + ' ' + value);
-  }).join('\n');
-};
-
-attributeClass = function(key, value) {
-  if (value) {
-    return value.replace(/\/g, __.key2class(key));
-  } else {
-    return __.key2class(key);
-  }
-};
-
-addAttribute = function(o, attr, value, seperator) {
-  if (seperator == null) {
-    seperator = ' ';
-  }
-  return __.object(o, attr, o[attr] && o[attr].length > 0 ? o[attr] + seperator + value : value);
-};
-
-attributeParse = function(obj, seperator, fixKeys) {
-  var p;
-  if (fixKeys == null) {
-    fixKeys = true;
-  }
-  return __.keys(p = __.reduceKeys(obj, {}, function(o, k) {
-    switch (false) {
-      case !__.check('class', k):
-        return addAttribute(o, 'class', attributeClass(k, obj[k]));
-      case !('id' === k && __.check('id', obj[k]) && __.isModule(this)):
-        return __.object(o, 'id', __.key2id.call(this, obj[k]));
-      case k !== 'class':
-        return addAttribute(o, 'class', obj[k]);
-      default:
-        return __.object(o, (fixKeys ? __.key2attribute(k) : k), obj[k]);
-    }
-  })).map(function(k) {
-    switch (false) {
-      case '' !== p[k]:
-        return k;
-      case !__.isBoolean(p[k]):
-        return k + '=' + p[k];
-      default:
-        return k + '="' + __.parseValue(p[k]) + '"';
-    }
-  }).filter(function(v) {
-    return v;
-  }).join(seperator || ' ');
-};
-
-attributeBracket = function(obj) {
-  var o;
-  delete (o = __.assign({}, obj))[newTab];
-  if (__.isEmpty(o)) {
-    return '';
-  } else {
-    return '(' + attributeParse.call(this, o) + ')';
-  }
-};
-
-codeLine = function(o, tag, obj) {
-  var _class;
-  __.check('class', _class = __.theKey(obj)) && __.isObject(obj[_class]) && __.remove(__.assign(__.object(obj, 'class', __.key2class(_class)), obj[_class]), _class);
-  return __.object(o, tag + attributeBracket.call(this, obj), newTab in obj ? __.parseValue(obj[newTab]) : '');
-};
-
-attributes = function(obj) {
-  var o;
-  delete (o = __.assign({}, obj))[newTab];
-  if (__.isEmpty(o)) {
-    return '';
-  } else {
-    return ' ' + attributeParse.call(this, o);
-  }
-};
-
-ionAttributes = function(o) {
-  if (__.isEmpty(o)) {
-    return '';
-  } else {
-    return ' ' + attributeParse(o, ' ', false);
-  }
-};
-
-htmlNoEndTags = 'area base br col command embed hr img input link meta param source'.split(' ');
-
-codeStr = function(tag, obj) {
-  var _class;
-  __.check('class', _class = __.theKey(obj)) && __.isObject(obj[_class]) && __.remove(__.assign(__.object(obj, 'class', __.key2class(_class)), obj[_class]), _class);
-  return '<' + tag + attributes.call(this, obj) + '>' + (newTab in obj ? '\n' + __.indent(__.parseValue(obj[newTab])) + '\n' : '') + (indexOf.call(htmlNoEndTags, tag) >= 0 ? '' : '</' + tag + '>') + '';
-};
-
-htmlAttributes = 'id class style src height width href size name'.split(' ');
-
-isHtmlAttribute = function(obj) {
-  var ref2;
-  return __.isObject(obj) && (ref2 = __.theKey(obj), indexOf.call(htmlAttributes, ref2) >= 0);
-};
-
-tagLine = function(tag, obj, str) {
-  var args, k, keys;
-  __.isObject(obj) && (obj = fixup.call(this, obj));
-  args = ([].slice.call(arguments)).slice(2);
-  str && __.object(obj, newTab, args.length === 1 ? args[0] : args.join('\n'));
-  switch (false) {
-    case !__.isString(obj):
-      return codeStr.call(this, tag, __.object({}, newTab, __.parseValue(obj)));
-    case !__.isNumber(obj):
-      return console.error('NUMBER?');
-    case !__.isArray(obj):
-      return console.error('ARRAY?');
-    case !(__.check('attribute', k = (keys = __.keys(obj))[0]) || __.check('class', k)):
-      return codeStr.call(this, tag, obj);
-    case !(__.check('id', k) && indexOf.call(keys, newTab) >= 0):
-      return codeStr.call(this, tag, __.object(obj[k], ['id', __.key2id.call(this, k)], [newTab, obj[newTab]]));
-    case !__.check('id', k):
-      __.keys(obj[k]).forEach(function(kk) {
-        return __.check('id', kk) && __.object(obj, kk, __.pop(obj[k][kk]));
-      });
-      return __.reduceKeys(obj, '', (function(_this) {
-        return function(o, v) {
-          return o + codeStr.call(_this, tag, __.object(obj[v], 'id', __.key2id.call(_this, v)));
-        };
-      })(this));
-    default:
-      return console.error('Unknown TAG', tag, obj);
-  }
-};
-
-
-global.blaze = {}
-global.ionic = {}
-global.sat   = {}
-global.html  = {}
-
-block = function(obj) {
-  return __.indent(indentStyle(fixup(obj)));
-};
-
-site_path && (function() {
-  var htmlTags, ionBlockTags, ionInsertTags;
-  htmlTags = 'a abbr acronym address applet area article aside audio b base basefont bdi bdo big blockquote body br button canvas caption center cite code col colgroup command data datagrid datalist dd del details dfn dir div dl dt em embed eventsource fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins isindex kbd keygen label legend li link main map mark menu meta meter nav noframes noscript object ol optgroup option output p param pre progress q rp rt ruby s samp script section select small source span strike strong style sub summary sup table tbody td textarea tfoot th thead time title tr track tt u ul var video wbr'.split(' ');
-  htmlTags.forEach(function(tag) {
-    return html[tag.toUpperCase()] = function() {
-      var args;
-      return tagLine.apply((args = [].slice.call(arguments))[0], [tag].concat(args.slice(1)));
-    };
-  });
-  ['Each', 'With'].forEach(function(tag) {
-    return blaze[tag] = function(_, obj) {
-      var key;
-      return '{{#' + tag + ' ' + (key = __.theKey(obj)) + '}}\n' + block(obj[key]) + '\n{{/' + tag + '}}';
-    };
-  });
-  ['If', 'Unless'].forEach(function(tag) {
-    return blaze[tag] = function(_, obj) {
-      var key;
-      return '{{#' + tag + ' ' + (key = __.theKey(obj)) + '}}\n' + block(obj[key]) + '';
-    };
-  });
-  ['Else'].forEach(function(tag) {
-    return blaze[tag] = function(_, obj) {
-      return '{{#' + tag + '}}';
-    };
-  });
-  ionBlockTags = 'Body Content FooterBar HeaderBar Item List Modal NavView Pane Popover Radio SideMenu SideMenuContent SideMenus Slide SlideBox SubfooterBar SubheaderBar Tabs View'.split(' ');
-  ionBlockTags.forEach(function(tag) {
-    return ionic[tag] = function(_, obj) {
-      var args;
-      args = [].slice.call(arguments);
-      switch (false) {
-        case !__.isObject(obj):
-          return '{{#' + 'ion' + tag + attributes(obj) + '}}\n' + __.indent(args.slice(2).join('\n')) + '\n{{/' + 'ion' + tag + '}}';
-        default:
-          return '{{#' + 'ion' + tag + '}}\n' + __.indent(args.slice(1).join('\n')) + '\n{{/' + 'ion' + tag + '}}';
-      }
-    };
-  });
-  ionInsertTags = 'Icon NavBar NavBackButton Popup Tab'.split(' ');
-  ionInsertTags.forEach(function(tag) {
-    return ionic[tag] = function(_, obj) {
-      switch (false) {
-        case !__.isObject(obj):
-          return '{{> ' + 'ion' + tag + ionAttributes(obj) + '}}';
-        default:
-          return '{{> ' + 'ion' + tag + '}}';
-      }
-    };
-  });
-  sat.Each = function(_, obj) {
-    var key;
-    return _.helpers[key = __.theKey(obj)]().map(function(a) {
-      return obj[key].replace(/_\[(\w+)\]/g, function(m, $1) {
-        return a[$1];
-      });
-    }).join('\n');
-  };
-  return blaze.Include = function(_, obj) {
-    var args, k;
-    args = [].slice.call(arguments);
-    switch (false) {
-      case !__.isObject(obj):
-        return '{{> ' + (k = __.theKey(obj)) + includeAttributes(obj[k]) + '}}';
-      case !__.isString(obj):
-        return '{{> ' + obj + '}}';
-      default:
-        return console.error('Invalid `include` objuments', obj, args);
-    }
-  };
-})();
-
-includeAttributes = function(obj) {
-  return ' ' + __.keys(obj).map(function(k) {
-    return k + '="' + __.parseValue(obj[k]) + '"';
-  }).join(' ');
-};
+mobile_config = function() {
+  var data, o
+  settings()
+  init_settings()
+  data = __.keys(o = Settings.app).map(function(k) {
+    var ref2, ref3
+    if ((ref2 = mcTable[k]) != null ? ref2.list : void 0)
+      return __.keys(o[k]).map( l => 'App.' + k + '("' + l + '", ' + strOrObj(o[k][l]) + ');' ).join('\n') + '\n\n'
+    else if (__.isArray(o[k])
+      return o[k].map( l => 'App.' + k + '("' + l + '");' ).join('\n') + '\n\n'
+    else
+      return 'App.' + k + '({' + (((ref3 = mcTable[k]) != null ? ref3.f : void 0) || mc_obj)(o[k]) + '\n});\n\n'
+  }).join('')
+  fs.readFile(  mobile_config_js, 'utf-8', (e, d) =>
+      d === data || fs.writeFile( mobile_config_js, data, e =>
+          console.log( new Date() + ' ' + mobile_config_js + ' is written.' )  )  )  }
 */
-gitpass = function() {
-  prompt.message = 'github';
-  prompt.start();
-  return prompt.get({
-    name: 'password',
-    hidden: true
-  }, function(err, result) {
-    fs.writeFileSync(add(home, '/.netrc'), "machine github.com\n   login i4han\n   password " + result.password, {
-      flag: 'w+'
-    });
-    return Config.quit(process.exit(1));
-  });
-};
-
 
 github_url = function(repo) {
   return 'https://github.com/' + repo + '.git' }
@@ -600,7 +160,7 @@ meteor_refresh = function() {
 };
 
 
-deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], build_path)
+deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], site_path)
 
 __create_test = function() {
   (test_path = argv._[0]) || console.error("error: Test directory name is missing.") || process.exit(1);
@@ -623,7 +183,7 @@ install_mobile = () => {
   let wt
   !site_path && !((wt = argv['with-test']) && test_path) && console.error("error: Run in .sat working directory or specify valid test name." || process.exit(1));
   ;(['install-sdk', 'add-platform'].reduce(((f, c) =>
-    () => spawn_command('meteor', c, ['ios'], wt ? test_path : build_path).on('exit', f)),
+    () => spawn_command('meteor', c, ['ios'], wt ? test_path : site_path).on('exit', f)),
     () => console.log(new Date()) ))()
 }
 
@@ -632,7 +192,7 @@ install_mobile = () => {
 function main () {
 
 let v
-const getVersion = path => __.require(path).version
+const getVersion = path => __.require(path.valueOf()).version
 const addVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
 const version = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
 const increaseVersion = (file, data) =>
@@ -645,20 +205,20 @@ const gitPush = (commit, paths) => {
                  : spawn_command('git', 'push', [], paths[0]).on(  'exit', code =>
                    paths.length ? gitPush( commit, paths ) : undefined  )  )  )  }
 const editFile = (file, func, action) =>
-    fs.readFile(file, 'utf8', (e, data) => error(e) ||
-        fs.writeFile(file, data = func(file, data), 'utf8', e => error(e) || (action && __.isFunction(action, action(file, data)))))
+    fs.readFile(file.valueOf(), 'utf8', (e, data) => error(e) ||
+        fs.writeFile(file.valueOf(), data = func(file, data), 'utf8', e => error(e) || (action && __.isFunction(action, action(file, data)))))
 const npmPublish    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', __.isFunction(after) ? after : () => {} )
 const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', __.isFunction(after) ? after : () => {} )
 const publish = paths => {
-    let v = paths.shift(), path = v.path
-    editFile(  add( path, v.meteor? package_js : package_json ),
-        (f, d) => increaseVersion( add(path, package_json), d ), (f, d) =>
+    let v = paths.shift(), path = in$(v.path)
+    editFile(  path.path( v.meteor ? package_js : package_json ),
+        (f, d) => increaseVersion( path.path(package_json), d ), (f, d) =>
         v.meteor ? meteorPublish(  path, () =>
-                v.npm ? editFile(  add(path, package_json), increaseVersion, (f, d) =>
+                v.npm ? editFile(  path.path(package_json), increaseVersion, (f, d) =>
                         npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )
                       : paths.length ? publish(paths) : {}  )
                  : npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )  }
-const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--settings', settings_json, '--port', port || '3000']), path || site_path )
+const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--port', port || '3000']), path || site_path )
 const npmUpdate = npms => {
     if (!npms.length) return
     let v = npms.shift()
@@ -695,13 +255,13 @@ const jasmineSpecs = key =>
 
 let ops = argv._
 new Task(  'env',  () =>
-    fs.readFile(  add(home, dot_env), 'utf8', (e, data) => error(e) ||
+    fs.readFile(  home.path(dot_env), 'utf8', (e, data) => error(e) ||
         data.replace(  /^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
             console.log( `  $${__.padLeft(22, p1)} = ` + process.env[p1] )  )  ),
     { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
 new Task(  'paths', () =>
     path_info.keys().map(  k =>
-        console.log( '  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path )  ),
+        console.log( '  ', __.padLeft(15, k), __.padLeft(8, path_info[k].type), path_info[k].path.valueOf() )  ),
     { dotsat: 0, test: 0, description: 'Show working paths.' } )
 new Task(  'args', () =>
     console.log('   arguments:   ', argv) ||
@@ -734,7 +294,7 @@ new Task(  'npm-install', () =>
                : npmInstall( npmArray( path_info.keys().filter( k => path_info[k].npm ).map( k => path_info[k] ) ) ),
     { dotsat: 0, test: 0, description: 'Update local npm modules.', thirdCommand: 1 }  )
 new Task(  'dot-env', () =>
-    fs.readFile(  add(home, dot_env), 'utf8', (e, data) => error(e) ||
+    fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
         console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  ),
     { dotsat: 0, test: 0, description: 'Print export .env $. <(sat dot-env)' }  )
 new Task(  'git-push', () =>
@@ -796,7 +356,7 @@ function pathInfo () {  return {
                 npm:[node_modules], meteor:[site_path], npmName: 'cubesat' },
     jqx:      { type: "package", name: "isaac:jquery-x",    git: 1, path: jqx_package_path },
     sq:       { type: "package", name: "isaac:style-query", git: 1, path: sq_package_path },
-    in:       { type: "package", name: "incredibles", git: 1, path: add(test_packages_path, 'incredibles'),
+    in:       { type: "package", name: "incredibles", git: 1, path: test_packages_path.path('incredibles'),
                 npm:[node_modules, site_path, test_path],   jasmine:1 },
     u2:       { type: "package", name: "isaac:underscore2", git: 1, path: u2_package_path,
                 npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  }  }
