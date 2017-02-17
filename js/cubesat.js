@@ -3,12 +3,14 @@
 // this variables -> this._
 // properties -> router
 // collections -> mongo
-in$ = require('incredibles')
+// const in$ = require('incredibles')
 
-typeof Meteor === "undefined" && (global.cube = {}, global.__ = require('underscore2'))
+if (typeof Meteor === "undefined") {
+    global.cube = {}
+    global.__  = require('underscore2')  }
 
 __._Modules   = {}
-__._Settings  = in$({})
+__._Settings  = {}
 __._Parts     = {}
 __._AttrParts = {}
 
@@ -112,10 +114,10 @@ class Settings {
     constructor(settings) {
         if (__.isFunction(settings)) {
             let _set = settings({})
-            __._Settings.add( in$( settings(_set) ).fnValue(_set) ) }
+            __.object( __._Settings,  __.fnValue( settings(_set), _set )  )  }
         else if (__.isObject(settings))
-            __._Settings.add( in$(settings).fnValue(settings) )
-        console.log('Settings!', __._Settings, 'settings',  )  }  }
+            __.object( __._Settings,  __.fnValue( settings, settings )  )
+    }  }
 
     //   let f
 //      if (__.isMeteorServer()) {

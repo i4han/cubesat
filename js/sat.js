@@ -7,7 +7,7 @@ const fs       = require('fs')
 const path     = require('path')
 const dotenv   = require('dotenv')
 const ref      = require('child_process'), spawn = ref.spawn, exec = ref.exec
-const __       = require('cubesat')
+const __       = require('underscore2')
 const in$      = require('incredibles')
 
 let command      = process.argv[2]
@@ -40,7 +40,7 @@ findDir = d => in$(process.cwd().split('/')).concat('')
 const dot_sat      = '.sat'
 const dot_cubesat  = '.cubesat'
 const dot_env      = '.env'
-const site_path    = findDir(dot_sat)    .is(false, '', v => v)
+const site_path    = findDir(dot_sat).is(false, in$(''), v => v)
 const dot_sat_path = site_path.path(dot_sat)
 const cubesat_path = findDir(dot_cubesat).is(false, home, v => v)
 const dot_cubesat_path = cubesat_path.path(dot_cubesat)  // should be error? .cubesat doesn't exist?
@@ -92,8 +92,6 @@ let f, r, s
 const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
 
 if (site_path) {
-  // build_path    = site_path
-  // site_js       = fs.readdirSync(site_path).filter(f => '.js' === path.extname(f))
   index_js_path    = site_path.path(index_js)
   mobile_config_js = site_path.path('mobile-config.js')
   settings_json    = site_path.path('.settings.json')
@@ -118,8 +116,6 @@ const spawn_command = (bin, command, args, path) => {
   path && ( cd(path) || console.log('  ', path.valueOf()) )
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
-// var indexOf = [].indexOf
-
 /*
 mobile_config = function() {
   var data, o
@@ -142,23 +138,11 @@ mobile_config = function() {
 github_url = function(repo) {
   return 'https://github.com/' + repo + '.git' }
 
-
 create = function() {
   var site;
   __.check('name', site = argv._[0]) || console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) || process.exit(1);
   return (spawn_command('git', 'clone', [github_url(argv.repo || 'i4han/sat-spark'), site])).on('exit', function(code) {
-    return code && (console.error('error: Git exited with an error.') || process.exit(1));
-  });
-};
-
-
-
-meteor_refresh = function() {
-  return meteor_publish().on('exit', function(code) {
-    return code || meteor_update();
-  });
-};
-
+    return code && (console.error('error: Git exited with an error.') || process.exit(1)); }); };
 
 deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], site_path)
 
@@ -171,22 +155,14 @@ __create_test = function() {
       return mkdir(packages_dir, null, function() {
         return mkdir(cubesat_name, packages_dir, function() {
           return (spawn_command('git', 'clone', [github_url('i4han/cubesat'), '.'], cubesat_name)).on('exit', function() {
-            return console.info("info: cubesat package directory:", process.cwd());
-          });
-        });
-      });
-    });
-  }
-};
+            return console.info("info: cubesat package directory:", process.cwd()); }); }); }); }); } };
 
 install_mobile = () => {
   let wt
   !site_path && !((wt = argv['with-test']) && test_path) && console.error("error: Run in .sat working directory or specify valid test name." || process.exit(1));
   ;(['install-sdk', 'add-platform'].reduce(((f, c) =>
     () => spawn_command('meteor', c, ['ios'], wt ? test_path : site_path).on('exit', f)),
-    () => console.log(new Date()) ))()
-}
-
+    () => console.log(new Date()) ))()  }
 
 
 function main () {
@@ -194,7 +170,7 @@ function main () {
 let v
 const getVersion = path => __.require(path.valueOf()).version
 const addVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
-const version = () => console.log(getVersion(add(path_info[argv._[0]].path, package_json)))
+const version = () => console.log( getVersion( in$(path_info[argv._[0]].path).path(package_json) ) )
 const increaseVersion = (file, data) =>
     data.replace(new RegExp('"version":\\s*"' + (v = getVersion(file)) + '"'), '"version": "' + addVersion(v) + '"')
 const gitPush = (commit, paths) => {
@@ -255,7 +231,7 @@ const jasmineSpecs = key =>
 
 let ops = argv._
 new Task(  'env',  () =>
-    fs.readFile(  home.path(dot_env), 'utf8', (e, data) => error(e) ||
+    fs.readFile(  home.path(dot_env).val, 'utf8', (e, data) => error(e) ||
         data.replace(  /^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
             console.log( `  $${__.padLeft(22, p1)} = ` + process.env[p1] )  )  ),
     { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
@@ -305,13 +281,13 @@ new Task(  'run', () => meteorRun(),
 new Task(  'test', () => {
     paths2test.forEach( d => {
         let target, source
-        fs.unlink(  target = add(test_path, d), () =>
-            fs.existsSync( source = add(site_path, d) ) && fs.symlink(  source, target, () =>
+        fs.unlink(  target = test_path.path(d).val, () =>
+            fs.existsSync( source = site_path.path(d).val ) && fs.symlink(  source, target, () =>
                 console.log(new Date(), source)  )  )  })
-    fs.readdir(  test_path, (e, list) => {
-        e || list.forEach( f => path.extname(f) === '.js' && fs.unlink(add(test_path, f)) )
-        fs.readdir(  site_path, (e, list) =>
-            e || list.forEach( f => path.extname(f) === '.js' && fs.link( add(site_path, f), add(test_path, f), () => console.log(new Date(), f) ) )  )  })
+    fs.readdir(  test_path.val, (e, list) => {
+        e || list.forEach( f => path.extname(f) === '.js' && fs.unlink( test_path.path(f).val ) )
+        fs.readdir(  site_path.val, (e, list) =>
+            e || list.forEach( f => path.extname(f) === '.js' && fs.link( site_path.path(f).val, test_path.path(f).val, () => console.log(new Date(), f) ) )  )  })
     meteorRun(test_path, '3300') },
     { dotsat: 1, test: 0, description: 'Test environment.', settings: 1 })
 new Task(  'publish', () => {
@@ -353,13 +329,12 @@ function pathInfo () {  return {
     site:     { type: "site",    name: "site",              git: 1, path: site_path },
     test:     { type: "test",    name: "test",              path: test_path },
     cubesat:  { type: "package", name: "isaac:cubesat",     git: 1, path: cubesat_package_path,
-                npm:[node_modules], meteor:[site_path], npmName: 'cubesat' },
+                npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
     jqx:      { type: "package", name: "isaac:jquery-x",    git: 1, path: jqx_package_path },
     sq:       { type: "package", name: "isaac:style-query", git: 1, path: sq_package_path },
-    in:       { type: "package", name: "incredibles", git: 1, path: test_packages_path.path('incredibles'),
-                npm:[node_modules, site_path, test_path],   jasmine:1 },
+    in:       { type: "package", name: "isaac:incredibles", git: 1, path: test_packages_path.path('isaac:incredibles'),
+                npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1 },
     u2:       { type: "package", name: "isaac:underscore2", git: 1, path: u2_package_path,
                 npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  }  }
-
 
 taskBook[command] ? taskBook[command]._fn() : task_command.call()
