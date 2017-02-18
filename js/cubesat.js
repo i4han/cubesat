@@ -24,14 +24,6 @@ class Module {
       __._Modules[name] = this
       this._    = this._    || {}
       this.user = this.user || {}
-    //   this.property = {}
-    //   this._.router = {}
-    //   this._.head   = {}
-    //   this._.style  = {}
-    //   this._.helpers = {}
-    //   this._.events  = {}
-    //   this._.methods = {}
-    //   this._.mongo  = {}
       this.user.name  = this._.name  = name
       this.user.label = this._.label = __.capitalize(name)
   }
@@ -118,24 +110,6 @@ class Settings {
         else if (__.isObject(settings))
             __.object( __._Settings,  __.fnValue( settings, settings )  )
     }  }
-
-    //   let f
-//      if (__.isMeteorServer()) {
-    //   if (! __.isMeteorClient()) {
-        //  settings = __.return(settings, __.return(settings))
-        //  ;(f = o => __.keys(o).forEach(k => {
-        //     __.isObject(o[k])   && f(o[k])
-        //     __.isFunction(o[k]) && (o[k] = __.return(o[k], settings)) })
-        //  )(settings)
-        //  this.setting = settings
-         // this.setting = __.return(settings, __.return(settings))
-         // if (typeof Sat !== 'undefined') Sat.setting = settings
-    //   } // settings just once? should be __.object
-    //   else {
-    //       if ('undefind' !== typeof Sat && __.isEmpty(Sat.settings)) Sat.setting = Meteor.settings
-    //     //   __._Settings = Meteor.settings
-    //   } } }
-
 
 class Cube {
    constructor() {
