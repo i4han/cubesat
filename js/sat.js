@@ -20,6 +20,7 @@ findDir = d => in$(process.cwd().split('/')).concat('')
 const home          = in$(process.env.HOME)
 const site_path     = findDir( '.sat' )     .is( false, in$(''), v => v )
 const dot_sat_path  = site_path.path( '.sat' )
+const mobile_config = site_path.path('mobile-config.js')
 const dot_cubesat   = '.cubesat'
 const cubesat_path  = findDir( dot_cubesat ).is( false, home, v => v )
 const workspace     = in$(process.env.WORKSPACE)
@@ -45,7 +46,7 @@ if (require.main === module) main()
 
 let command    = process.argv[2]
 if (! command) command = 'help'                    // empty command means 'sat help'
-const task_command = tasks[__.camelize(command)]
+// const task_command = tasks[__.camelize(command)]
 const taskTogo = taskBook[command]
 const arg0 = argv._[0]
 
@@ -55,45 +56,18 @@ const error_quit = e => {
   process.exit(1) }
 
 let Settings = in$({})
-__.Settings = sobj => {
+__.Settings = sobj =>
     in$(sobj).typeof(  'function', () => {
         let _set = in$({}).set(Settings, sobj({}))
         Settings.set( in$(sobj(_set)).fnValue(_set) )  }) ||
     in$(sobj).typeof(  'object', v =>
-        Settings.set( v.fnValue( in$({}).set( Settings, sobj ) ) )  )  }
+        Settings.set( v.fnValue( in$({}).set( Settings, sobj ) ) )  )
 
 taskTogo || error_quit(`fatal: Unknown command "${command}"`)
 taskTogo._.dotsat   && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
 taskTogo._.arg0     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
 taskTogo._.test     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
 taskTogo._.settings && require( site_path.path( 'lib', 'settings.js' ).val )
-
-// task_command || error_quit(`fatal: Unknown command "${command}"`)
-// task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
-// task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
-// task_command.test   && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
-
-// const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
-
-let site_js, settings_js_path, mobile_config_js, settings_json
-let f, r, s
-
-// const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
-
-if (site_path) {
-  settings_js_path = site_path.path('lib', 'settings.js')
-  mobile_config_js = site_path.path('mobile-config.js')
-  settings_json    = site_path.path('.settings.json')
-
-  // init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(settings_js_path))
-  // task_command.settings && init_settings()
-}
-
-// let json
-// const settings = () =>
-//     init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
-//         (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
-//             fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
 
 const cd = d => process.chdir(d.valueOf())
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
@@ -132,7 +106,7 @@ create = function() {
   return (spawn_command('git', 'clone', [github_url(argv.repo || 'i4han/sat-spark'), site])).on('exit', function(code) {
     return code && (console.error('error: Git exited with an error.') || process.exit(1)); }); };
 
-deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name, '--settings', settings_json], site_path)
+deploy = () =>  spawn_command('meteor', 'deploy', [argv._[0] || Settings.deploy.name], site_path)
 
 __create_test = function() {
   (test_path = argv._[0]) || console.error("error: Test directory name is missing.") || process.exit(1);
