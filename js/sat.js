@@ -18,12 +18,14 @@ findDir = d => in$(process.cwd().split('/')).concat('')
     .typeof( 'array', v => in$( v.join('/') ), v => v )
 
 const home          = in$(process.env.HOME)
-const site_path     = findDir( '.sat' )    .is( false, in$(''), v => v )
+const site_path     = findDir( '.sat' )     .is( false, in$(''), v => v )
 const dot_sat_path  = site_path.path( '.sat' )
-const cubesat_path  = findDir( '.cubesat' ).is( false, home, v => v )
-const test_path     = cubesat_path.path( 'test' )
+const dot_cubesat   = '.cubesat'
+const cubesat_path  = findDir( dot_cubesat ).is( false, home, v => v )
+const workspace     = in$(process.env.WORKSPACE)
+const test_path     = workspace.path( 'test' )
 const packages_path = test_path.path( packages_dir )
-const settings_path = cubesat_path.path( '.cubesat', 'settings.js' )
+const settings_path = cubesat_path.path( dot_cubesat, 'settings.js' )
 const node_modules  = process.env.NODE_MODULES || findDir( 'node_modules' ) || home
 const paths2test    = 'client server lib public private resources'.split(' ')
 home.path(dot_env).if( v => fs.existsSync( v.val ), w => dotenv.config( {path: w.val} ) )
@@ -42,8 +44,9 @@ let taskBook = in$({}), path_info
 if (require.main === module) main()
 
 let command    = process.argv[2]
-if (! command) command = 'help'  // empty command means 'sat help'
+if (! command) command = 'help'                    // empty command means 'sat help'
 const task_command = tasks[__.camelize(command)]
+const taskTogo = taskBook[command]
 const arg0 = argv._[0]
 
 const error = e => e && (console.error(e) || true)
@@ -51,31 +54,46 @@ const error_quit = e => {
   console.error(e)
   process.exit(1) }
 
-task_command || error_quit(`fatal: Unknown command "${command}"`)
-task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
-task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
-task_command.test   && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
+let Settings = in$({})
+__.Settings = sobj => {
+    in$(sobj).typeof(  'function', () => {
+        let _set = in$({}).set(Settings, sobj({}))
+        Settings.set( in$(sobj(_set)).fnValue(_set) )  }) ||
+    in$(sobj).typeof(  'object', v =>
+        Settings.set( v.fnValue( in$({}).set( Settings, sobj ) ) )  )  }
+
+taskTogo || error_quit(`fatal: Unknown command "${command}"`)
+taskTogo._.dotsat   && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
+taskTogo._.arg0     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
+taskTogo._.test     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
+taskTogo._.settings && require( site_path.path( 'lib', 'settings.js' ).val )
+
+// task_command || error_quit(`fatal: Unknown command "${command}"`)
+// task_command.dotsat && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
+// task_command.arg0   && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
+// task_command.test   && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
 
 // const package_paths = __.keys(path_info).filter(k => 'package' === path_info[k].type).map(k => path_info[k].path)
 
 let site_js, settings_js_path, mobile_config_js, settings_json
 let f, r, s
 
-const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
+// const loadSettings  = f => (fs.existsSync(f) && __.return(r = __.require(f).setting, __.return(r))) || {}
 
 if (site_path) {
   settings_js_path = site_path.path('lib', 'settings.js')
   mobile_config_js = site_path.path('mobile-config.js')
   settings_json    = site_path.path('.settings.json')
 
-  init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(settings_js_path))
-  task_command.settings && init_settings()  }
+  // init_settings = () => __.assign(Settings = loadSettings(settings_path), loadSettings(settings_js_path))
+  // task_command.settings && init_settings()
+}
 
-let json
-const settings = () =>
-    init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
-        (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
-            fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
+// let json
+// const settings = () =>
+//     init_settings() && fs.readFile(settings_json, 'utf-8', (e, data) =>
+//         (data === (json = JSON.stringify(Settings, '', 4) + '\n')) ||
+//             fs.writeFile(settings_json, json, e => console.log(new Date() + ' Settings are written.')) )
 
 const cd = d => process.chdir(d.valueOf())
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
@@ -110,7 +128,7 @@ github_url = function(repo) {
 
 create = function() {
   var site;
-  __.check('name', site = argv._[0]) || console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) || process.exit(1);
+  //__.check('name', site = argv._[0]) || console.error("error: Not a vaild name to create. Use alphanumeric and '.', '_', '-'.", site) || process.exit(1);
   return (spawn_command('git', 'clone', [github_url(argv.repo || 'i4han/sat-spark'), site])).on('exit', function(code) {
     return code && (console.error('error: Git exited with an error.') || process.exit(1)); }); };
 
@@ -217,8 +235,8 @@ new Task(  'args', () =>
         console.log( '  ', `-${k}, --${options[k].full}`.padEnd(15), options[k].command.padEnd(40), options[k].description )  ),
     { dotsat: 0, test: 0, description: 'Show arguments.' }  )
 new Task(  'help', () =>
-    tasks.keys().map(  k =>
-        console.log( '  ', __.dasherize(k).padEnd(15), (tasks[k].description || taskBook[__.dasherize(k)]._.description) )  ),
+    taskBook.keys().map(  k =>
+        console.log( '  ', k.padEnd(15), taskBook[k]._.description )  ),
     { dotsat: 0, test: 0, description: 'Help message.' }  )
 new Task(  'add-version', () => {
     let p = in$(path_info[argv._[0]].path)
@@ -241,9 +259,10 @@ new Task(  'npm-install', () =>
     ops.length ? npmInstall( npmArray( ops.map(k => path_info[k]) ) )
                : npmInstall( npmArray( path_info.keys().filter( k => path_info[k].npm ).map( k => path_info[k] ) ) ),
     { dotsat: 0, test: 0, description: 'Update local npm modules.', thirdCommand: 1 }  )
-new Task(  'dot-env', () =>
+new Task(  'dot-env', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
-        console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  ),
+        console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  )
+    console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.val) ) + "'" ) },
     { dotsat: 0, test: 0, description: 'Print export .env $. <(sat dot-env)' }  )
 new Task(  'git-push', () =>
     gitPush( arg0, path_info.keys().filter( k => path_info[k].git ).map( k => path_info[k].path ) ),
@@ -266,43 +285,32 @@ new Task(  'publish', () => {
     if ( argv._.length ) publish( argv._.map(k => path_info[k]) )
     else publish( path_info.keys().filter(k => path_info[k].npm || path_info[k].meteor).map(k => path_info[k]) )  },
     { dotsat: 0, test: 0, description: 'Publish Meteor packages.' })
+new Task(  'settings', () => {
+        console.log(Settings)},
+    {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 tasks = in$({
-  env:        { dotsat: 0, test: 0 },
-  paths:      { dotsat: 0, test: 0 },
-  args:       { dotsat: 0, test: 0 },
-  test:       { dotsat: 1, test: 0, settings: 1 },
-  update:     { dotsat: 1, test: 0, thirdCommand: 1 },
-  npmUpdate:  { dotsat: 1, test: 0},
-  npmInstall: { dotsat: 1, test: 0},
-  help:       { dotsat: 0, test: 0 },
-  run:        { dotsat: 1, test: 0, settings: 1 },
-  gitPush:    { dotsat: 1, test: 0, arg0: 1 },
-  dotEnv:     { dotsat: 0, test: 0 },
-  version:    { dotsat: 0, test: 0, arg0: 1 },
-  publish:    { dotsat: 0, test: 0 },
-  jasmine:    { dotsat: 0, test: 0 },
-  addVersion: { dotsat: 0, test: 0, arg0: 1 },
-  create:     { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
-  settings:   { call: () => settings(),   dotsat: 1, test: 0, description: 'Settings', settings: 1 },
-  deploy:     { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
-  mobileConfig:  { call: () => mobile_config(),    dotsat: 0, test: 1, description: 'Create mobile-config.js' },
-  createTest:    { call: () => create_test(),      dotsat: 0, test: 1, description: 'Create test directory.' },
-  installMobile: { call: () => install_mobile(),   dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' }
-})
+    create:     { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
+    deploy:     { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
+    mobileConfig:  { call: () => mobile_config(),    dotsat: 0, test: 1, description: 'Create mobile-config.js' },
+    createTest:    { call: () => create_test(),      dotsat: 0, test: 1, description: 'Create test directory.' },
+    installMobile: { call: () => install_mobile(),   dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' }  })
 
 options = in$({})
 
 path_info = in$({
-    sat:      { type: "sat",     name: "sat",               path: cubesat_path },
-    module:   { type: "module",  name: "module",            path: node_modules },
-    site:     { type: "site",    name: "site",              git: 1, path: site_path },
-    test:     { type: "test",    name: "test",              path: test_path },
-    cubesat:  { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),
-                npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
-    jqx:      { type: "package", name: "isaac:jquery-x",    git: 1, path: packages_path.path("isaac:jquery-x") },
-    sq:       { type: "package", name: "isaac:style-query", git: 1, path: packages_path.path("isaac:style-query") },
-    in:       { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles"),
-                npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1 },
-    u2:       { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2"),
-                npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })  }
+    home:      { type: "user",    name: "home",              path: home },
+    sat:       { type: "user",    name: "cubesat",           path: cubesat_path },
+    module:    { type: "user",    name: "module",            path: node_modules },
+    workspace: { type: "user",    name: "workspace",         path: workspace },
+    settings:  { type: "user",    name: "settings",          path: settings_path },
+    site:      { type: "site",    name: "site",              git: 1, path: site_path },
+    test:      { type: "site",    name: "test",              path: test_path },
+    cubesat:   { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),
+                 npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
+    jqx:       { type: "package", name: "isaac:jquery-x",    git: 1, path: packages_path.path("isaac:jquery-x") },
+    sq:        { type: "package", name: "isaac:style-query", git: 1, path: packages_path.path("isaac:style-query") },
+    in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles"),
+                 npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1 },
+    u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2"),
+                 npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })  }

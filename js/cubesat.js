@@ -105,10 +105,11 @@ class Parts {
 class Settings {
     constructor(settings) {
         if (__.isFunction(settings)) {
-            let _set = settings({})
+            let _set = __.object({}, __._Settings)
+            __.object(_set, settings({}))
             __.object( __._Settings,  __.fnValue( settings(_set), _set )  )  }
         else if (__.isObject(settings))
-            __.object( __._Settings,  __.fnValue( settings, settings )  )
+            __.object( __._Settings,  __.fnValue( settings, __.assign( {}, __._Settings, settings ) ) )
     }  }
 
 class Cube {
