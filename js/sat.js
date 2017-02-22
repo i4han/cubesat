@@ -44,27 +44,23 @@ class Task {
         taskBook.set(name, this) }  }
 
 let Settings = in$({})
-__.Settings = sobj =>
-    in$(sobj).typeof(  'function', () => {
-        let _set = in$({}).set(Settings, sobj({}))
-        Settings.set( in$(sobj(_set)).fnValue(_set) )  }) ||
-    in$(sobj).typeof(  'object', v =>
-        Settings.set( v.fnValue( in$({}).set( Settings, sobj ) ) )  )
+__.Settings = sobj => {
+    if ('function' === typeof sobj) {
+        let _set = in$({}).oset(Settings, sobj({}))
+        Settings.oset( in$(sobj(_set)).fnValue(_set) )  }
+    else in$(sobj)
+        .if( v => v.typeof('object') )
+        .then( v => Settings.oset( v.fnValue( in$({}).oset( Settings, v.value ) ) ) ) }
 
-__.require = f => delete require.cache[f] && require(f)
 const isCommand = f => require.main === module && f()
 
 isCommand( main )
 let command = process.argv[2] || 'help'
 // console.log(command, taskBook.val, 0, taskBook.get('help').get('fn'))
-
-// const task_command = tasks[__.camelize(command)]
 const taskTogo = taskBook.get$(command)
 const arg0 = argv._[0]
 const error = e => e && (console.error(e) || true)
-const error_quit = e => {
-    console.error(e)
-    process.exit(1) }
+const error_quit = e =>  console.error(e) || process.exit(1)
 
 isCommand( handleErrors )
 
@@ -128,18 +124,16 @@ install_mobile = () => {
 isCommand( taskBook.get(command, 'fn') )    // task_command.call()
 
 function handleErrors () {
-
     taskTogo || error_quit(`fatal: Unknown command "${command}"`)
     taskTogo.dget('options.dotsat')   && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
     taskTogo.dget('options.arg0')     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
     taskTogo.dget('options.test')     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
-    taskTogo.dget('options.settings') && require( site_path.path( 'lib', 'settings.js' ).val )
-}
+    taskTogo.dget('options.settings') && require( site_path.path( 'lib', 'settings.js' ).val )  }
 
 function main () {
 
 let v
-const getVersion = path => __.require(path.valueOf()).version
+const getVersion = path => require(path.valueOf()).version
 const addVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
 const version = () => console.log( getVersion( path_info.get(argv._[0], 'path').path(package_json) ) )
 const increaseVersion = (file, data) =>
@@ -200,51 +194,65 @@ const jasmineSpecs = key =>
             a.concat(  fs.readdirSync( v.path.in$().path('spec').val ).filter( w => w.match(/[sS]pec\.js$/) )
                 .map( x => v.path.in$().path('spec', x) )  )  ), []   )
 
-
 let ops = argv._
 new Task(  'env',  () =>
     fs.readFile(  home.path(dot_env).val, 'utf8', (e, data) => error(e) ||
         data.replace(  /^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
             console.log( `  $${p1.padEnd(22)} = ` + process.env[p1] )  )  ),
     { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
+
 new Task(  'paths', () =>
     path_info.keys().map(  k =>
-        console.log( '  ', k.padEnd(15), path_info.get(k).type.padEnd(8), path_info.get(k).path.valueOf() )  ),
+        console.log( '  ', k.padEnd(16), path_info.get(k).type.padEnd(8), path_info.get(k).path.valueOf() )  ),
     { dotsat: 0, test: 0, description: 'Show working paths.' } )
+
 new Task(  'args', () =>
     console.log('   arguments:   ', argv) ||
     options.keys().map(  k =>
         console.log( '  ', `-${k}, --${options[k].full}`.padEnd(15), options[k].command.padEnd(40), options[k].description )  ),
     { dotsat: 0, test: 0, description: 'Show arguments.' }  )
+
 new Task(  'help', () =>
     taskBook.keys().map(  k =>
-        console.log( '  ', k.padEnd(15), taskBook.get(k).options.description )  ),
+        console.log( '  ', k.padEnd(16), taskBook.get(k).options.description )  ),
     { dotsat: 0, test: 0, description: 'Help message.' }  )
+
 new Task(  'add-version', () => {
     let p = in$(path_info.get(argv._[0], 'path'))
     editFile( p.path(package_js), (f, d) => increaseVersion( p.path(package_json).val, d), () =>
         editFile( p.path(package_json), increaseVersion, () => version() )) },
     { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
+
 new Task(  'version', () => version(),
     { dotsat: 0, test: 0, description: 'Print sat version.', arg0: 1 }  )
+
 new Task(  'jasmine', () => jasmine( jasmineSpecs() ),
     { dotsat: 0, test: 0, description: 'Run Jasmine test framework.' }  )
+const npmOrMeteor = () => path_info.keys().filter(k => path_info.get(k, 'npm') || path_info.get(k, 'meteor'))
 new Task(  'update', () =>
-    ops.length ? update( ops.map(k => path_info.get(k)) )
-               : update( path_info.keys().filter(k => path_info.get(k, 'npm') || path_info.get(k, 'meteor')).map(k => path_info.get(k)) ),
+    ops.length ? update( pathInfos(ops) )
+               : update( npmOrMeteor().map(k => path_info.get(k)) ),
     { dotsat: 0, test: 0, description: 'Update packages.', thirdCommand: 1 }  )
+
+const filter = p => path_info.keys().filter( k => path_info.get(k, p) )
+const pathInfos = a => a.map(k => path_info.get(k))
+
 new Task(  'npm-update', () =>
-    ops.length ? npmUpdate( npmArray( ops.map(k => path_info.get(k)) ) )
-               : npmUpdate( npmArray( path_info.keys().filter( k => path_info.get(k, 'npm') ).map( k => path_info.get(k) ) ) ),
+    ops.length ? npmUpdate(  npmArray( ops.map(k => path_info.get(k)) ) )
+               : npmUpdate(  npmArray( filter('npm').map( k => path_info.get(k) ) ) ),
     { dotsat: 0, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
+
 new Task(  'npm-install', () =>
-    ops.length ? npmInstall( npmArray( ops.map(k => path_info.get(k)) ) )
-               : npmInstall( npmArray( path_info.keys().filter( k => path_info.get(k, 'npm') ).map( k => path_info.get(k) ) ) ),
+    ops.length ? npmInstall( npmArray( pathInfos(ops) ) )
+               : npmInstall( npmArray( filter('npm').map( k => path_info.get(k) ) ) ),
     { dotsat: 0, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
-// new Task(  'npm-test-install', () =>
-//     ops.length ? npmInstall( ops.map(k => path_info.get(k)).map(v => {name: v.get('name'), prefix: test, path: v.get('path')}) )
-//                : npmInstall( path_info.keys().filter( k => path_info.get(k, 'npmTest') ).map( k => path_info.get(k) ) ),
-//     { dotsat: 0, test: 0, description: 'Install local npm modules for test site.', thirdCommand: 1 }  )
+
+const testArray = a => a.map(v => ({name: v.name, prefix: test_path, path: v.path}))
+new Task(  'npm-test-install', () =>
+    ops.length ? npmInstall( testArray( pathInfos(ops) ) )
+               : npmInstall( testArray( pathInfos( filter('npmTest') ) ) ),
+    { dotsat: 0, test: 0, description: 'Install local npm modules for test site.', thirdCommand: 1 }  )
+
 new Task(  'exports', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
         console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  )
@@ -252,11 +260,14 @@ new Task(  'exports', () => {
             console.log( `alias cd-${v}='cd`, path_info.get(v, 'path') + "'" )  )
     console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.val) ) + "'" ) },
     { dotsat: 0, test: 0, description: 'Print export .env $. <(sat exports)' }  )
+
 new Task(  'git-push', () =>
-    gitPush( arg0, path_info.keys().filter( k => path_info.get(k, 'git') ).map( k => path_info.get(k, 'path') ) ),
+    gitPush( arg0, filter('git').map( k => path_info.get(k, 'path') ) ),
     { dotsat: 1, test: 0, description: 'Git push.', arg0: 1 })
+
 new Task(  'run', () => meteorRun(),
     { dotsat: 1, test: 0, description: 'Run meteor server.', settings: 1 })
+
 new Task(  'test', () => {
     paths2test.forEach( d => {
         let target, source
@@ -273,12 +284,14 @@ new Task(  'test', () => {
                 console.log(new Date(), f) ) )  )  })
     meteorRun(test_path, '3300') },
     { dotsat: 1, test: 0, description: 'Test environment.', settings: 1 })
+
 new Task(  'publish', () => {
-    if ( argv._.length ) publish( argv._.map(k => path_info.get(k)) )
-    else publish( path_info.keys().filter(k => path_info.get(k, 'npm') || path_info.get(k, 'meteor')).map(k => path_info.get(k)) )  },
+    if ( argv._.length ) publish( pathInfos(argv._) )
+    else publish( pathInfos( npmOrMeteor() ) )  },
     { dotsat: 0, test: 0, description: 'Publish Meteor packages.' })
+
 new Task(  'settings', () => {
-        console.log(Settings)},
+        console.log(Settings.value)},
     {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 tasks = in$({
