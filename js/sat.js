@@ -245,11 +245,13 @@ new Task(  'npm-install', () =>
 //     ops.length ? npmInstall( ops.map(k => path_info.get(k)).map(v => {name: v.get('name'), prefix: test, path: v.get('path')}) )
 //                : npmInstall( path_info.keys().filter( k => path_info.get(k, 'npmTest') ).map( k => path_info.get(k) ) ),
 //     { dotsat: 0, test: 0, description: 'Install local npm modules for test site.', thirdCommand: 1 }  )
-new Task(  'dot-env', () => {
+new Task(  'exports', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
         console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  )
+    path_info.keys().filter( (v,i,a) => path_info.get(v, 'cd') ).forEach( v =>
+            console.log( `alias cd-${v}='cd`, path_info.get(v, 'path') + "'" )  )
     console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.val) ) + "'" ) },
-    { dotsat: 0, test: 0, description: 'Print export .env $. <(sat dot-env)' }  )
+    { dotsat: 0, test: 0, description: 'Print export .env $. <(sat exports)' }  )
 new Task(  'git-push', () =>
     gitPush( arg0, path_info.keys().filter( k => path_info.get(k, 'git') ).map( k => path_info.get(k, 'path') ) ),
     { dotsat: 1, test: 0, description: 'Git push.', arg0: 1 })
@@ -292,15 +294,15 @@ path_info = in$({
     home:      { type: "user",    name: "home",              path: home },
     sat:       { type: "user",    name: "cubesat",           path: cubesat_path },
     module:    { type: "user",    name: "module",            path: node_modules },
-    workspace: { type: "user",    name: "workspace",         path: workspace },
     settings:  { type: "user",    name: "settings",          path: settings_path },
-    site:      { type: "site",    name: "site",              git: 1, path: site_path },
-    test:      { type: "site",    name: "test",              path: test_path },
-    cubesat:   { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),
+    ws:        { type: "user",    name: "workspace",         path: workspace,         cd:1 },
+    site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:1 },
+    test:      { type: "site",    name: "test",              path: test_path,         cd:1 },
+    cs:        { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),     cd:1,
                  npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
-    jqx:       { type: "package", name: "isaac:jquery-x",    git: 1, path: packages_path.path("isaac:jquery-x") },
-    sq:        { type: "package", name: "isaac:style-query", git: 1, path: packages_path.path("isaac:style-query") },
-    in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles"),
+    jq:        { type: "package", name: "isaac:jquery-x",    git: 1, path: packages_path.path("isaac:jquery-x"),    cd:1 },
+    sq:        { type: "package", name: "isaac:style-query", git: 1, path: packages_path.path("isaac:style-query"), cd:1 },
+    in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles"), cd:1,
                  npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1, npmTest: 1 },
-    u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2"),
+    u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2"), cd:1,
                  npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })  }
