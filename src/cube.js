@@ -13,13 +13,13 @@ const mongoServer = (m, cs) => {
         update: (userId, doc, fields, modifier) => false,
         remove: (userId, doc) => false })
       __._db[k].deny(__.return.call(m, cs[k].deny) || {})
-      console.log('', k, __._db[k].find({}).count(), 'documents.' )
+    //   console.log('', k, __._db[k].find({}).count(), 'documents.' )
       Meteor.publish(k, cs[k].publish ? () => cs[k].publish(m) : () => __._db[k].find({}))
       cs[k].collections && mongoServer(m, cs[k].collections) }) }
       //__.serverMongoConnected(k)
 
 const subscribe   = (m, k) => {
-    console.log(k, __._db[k].subscribes)
+    // console.log(k, __._db[k].subscribes)
     __._db[k].subscribes.filter(f => __.isFunction(f)).map(f => f(m, __._db[k])) }
 
 const mongoClient = (m, cs) => {

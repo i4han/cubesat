@@ -78,7 +78,7 @@ class Module {
    onCreated  (f) { return __.object(this, '_.onCreated',   f(this.properties().user)) }
    fn(o) {
      __.eachKeys(o, k => this[k] = o[k].bind(this))
-     return this }
+     return this  }
    $ (v) { return $(this.local(v)) }
    build(name) {
       name && (name !== this.name()) && console.error('Created module name and close name doesn\'t match', name, this.name())

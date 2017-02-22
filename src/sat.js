@@ -12,12 +12,26 @@ const package_js    = 'package.js'
 const package_json  = 'package.json'
 const packages_dir  = 'packages'
 
+require.main !== module && ( () => {
+    const gulp = require('gulp')
+    const mod  = v => require(v)()
+    paths = {
+        src: "./src/*.js",
+        doc: "./doc"
+    }
+    gulp.task( 'doc', () => {
+        gulp.src(paths.src)
+        .pipe(mod("gulp-markdox"))
+        .pipe(gulp.dest(paths.doc)) })
+})()
+
 findDir = d => in$(process.cwd().split('/')).concat('')
     .reduce( ( (a,v,i,ar) => a.insert( i, ar.slice(0, -i - 1) ) ), in$([]) )
-    .until( v => fs.existsSync( in$( v.join('/') ).path(d).val ) )
-    .if( v => v.typeof('array') ).then(v => in$( v.join('/') ))._
+    .until( v => fs.existsSync( v.join('/').in$().path(d).value ) )
+    .if( v => v.typeof('array') ).then( v => in$( v.join('/') ) ).else(in$(''))._
 
 const home          = in$( process.env.HOME )
+home.path(dot_env).if( v => fs.existsSync( v.value ) ).then( w => dotenv.config( {path: w.value} ) )
 const site_path     = findDir( '.sat' )
 const dot_sat_path  = site_path.path( '.sat' )
 const mobile_config = site_path.path( 'mobile-config.js' )
@@ -28,9 +42,8 @@ const workspace     = in$( process.env.WORKSPACE || home.path('workspace') )
 const test_path     = workspace.path( 'test' )
 //console.log(1, site_path, 2, test_path)
 const packages_path = test_path.path( packages_dir )
-const node_modules  = process.env.NODE_MODULES || findDir( 'node_modules' ) || home
-const paths2test    = 'client server lib public private resources'.split(' ')
-home.path(dot_env).if( v => fs.existsSync( v.val ), w => dotenv.config( {path: w.val} ) )
+const node_modules  = process.env.NODE_MODULES || findDir( 'node_modules' ) || home // NODE_MODULES is not standard. but
+const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
 let taskBook = in$({}), path_info
 let tasks, options
@@ -69,7 +82,7 @@ const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path)
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 const spawn_command = (bin, command, args, path) => {
   console.log( '  ', ([bin, command].concat(args)).join(' ') )
-  path && ( cd(path) || console.log('  ', path.val ) )
+  path && ( cd(path) || console.log('  ', path.value ) )
   return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
 /*
@@ -121,14 +134,14 @@ install_mobile = () => {
     () => console.log(new Date()) ))()  }
 
 // console.log(0, taskBook.val, 1, taskBook.get(command).val, 2, taskBook.get(command, 'fn'))
-isCommand( taskBook.get(command, 'fn') )    // task_command.call()
+isCommand( () => taskBook.get(command, 'fn')() )    // task_command.call()
 
 function handleErrors () {
     taskTogo || error_quit(`fatal: Unknown command "${command}"`)
-    taskTogo.dget('options.dotsat')   && (site_path || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
+    taskTogo.dget('options.dotsat')   && (site_path.value || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
     taskTogo.dget('options.arg0')     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
     taskTogo.dget('options.test')     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
-    taskTogo.dget('options.settings') && require( site_path.path( 'lib', 'settings.js' ).val )  }
+    taskTogo.dget('options.settings') && require( site_path.path( 'lib', 'settings.js' ).value )  }
 
 function main () {
 
@@ -146,16 +159,16 @@ const gitPush = (commit, paths) => {
                  : spawn_command('git', 'push', [], paths[0]).on(  'exit', code =>
                    paths.length ? gitPush( commit, paths ) : undefined  )  )  )  }
 const editFile = (file, func, action) =>
-    fs.readFile(  file.val, 'utf8', (e, data) => error(e) ||
-        fs.writeFile( file.val, data = func(file, data), 'utf8', e => error(e) || ( action && action(file, data) ) )  )
+    fs.readFile(  file.value, 'utf8', (e, data) => error(e) ||
+        fs.writeFile( file.value, data = func(file, data), 'utf8', e => error(e) || ( action && action(file, data) ) )  )
 const npmPublish    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', after ? after : () => {} )
 const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', after ? after : () => {} )
 const publish = paths => {
-    let v = paths.shift(), path = in$(v.get('path'))
-    editFile(  path.path( v.get('meteor') ? package_js : package_json ),
+    let v = paths.shift(), path = v.path.in$()
+    editFile(  path.path( v.meteor ? package_js : package_json ),
         (f, d) => increaseVersion( path.path(package_json), d ), (f, d) =>
-        v.get('meteor') ? meteorPublish(  path, () =>
-                v.get('npm') ? editFile(  path.path(package_json), increaseVersion, (f, d) =>
+        v.meteor ? meteorPublish(  path, () =>
+                v.npm ? editFile(  path.path(package_json), increaseVersion, (f, d) =>
                         npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )
                       : paths.length ? publish(paths) : {}  )
                  : npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )  }
@@ -176,8 +189,8 @@ const npmArray = arr => arr.reduce(  (  (a,v,i) =>
     a.concat( v.npm.map( w => ({name:v.npmName || v.name, prefix:w, path:v.path }) ) )  ), []  )
 const update = paths => {
     meteorUpdate(
-        npmArray( paths.filter(v => v.get('npm')) ),
-        paths.filter(v => v.get('meteor')).reduce( ((a,v,i) => a.concat( v.get('meteor').map( w => ({name:v.get('name'), path:w}) ) )), [] )  )  }
+        npmArray( paths.filter(v => v.npm) ),
+        paths.filter(v => v.meteor).reduce( ((a,v,i) => a.concat( v.meteor.map( w => ({name:v.name, path:w}) ) )), [] )  )  }
 const npmInstall = npms => {
     if (!npms.length) return
     let v = npms.shift()
@@ -191,12 +204,12 @@ const jasmine = (a, fn) => {
 const jasmineSpecs = key =>
     key ? [] :
         path_info.keys().map( k => path_info.get(k) ).filter( v => v.jasmine ).reduce(  (  (a,v) =>
-            a.concat(  fs.readdirSync( v.path.in$().path('spec').val ).filter( w => w.match(/[sS]pec\.js$/) )
+            a.concat(  fs.readdirSync( v.path.in$().path('spec').value ).filter( w => w.match(/[sS]pec\.js$/) )
                 .map( x => v.path.in$().path('spec', x) )  )  ), []   )
 
 let ops = argv._
 new Task(  'env',  () =>
-    fs.readFile(  home.path(dot_env).val, 'utf8', (e, data) => error(e) ||
+    fs.readFile(  home.path(dot_env).value, 'utf8', (e, data) => error(e) ||
         data.replace(  /^\s*([a-zA-Z_]{1}[a-zA-Z0-9_]*).*/mg, (m, p1) =>
             console.log( `  $${p1.padEnd(22)} = ` + process.env[p1] )  )  ),
     { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
@@ -219,7 +232,7 @@ new Task(  'help', () =>
 
 new Task(  'add-version', () => {
     let p = in$(path_info.get(argv._[0], 'path'))
-    editFile( p.path(package_js), (f, d) => increaseVersion( p.path(package_json).val, d), () =>
+    editFile( p.path(package_js), (f, d) => increaseVersion( p.path(package_json).value, d), () =>
         editFile( p.path(package_json), increaseVersion, () => version() )) },
     { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
 
@@ -232,7 +245,7 @@ const npmOrMeteor = () => path_info.keys().filter(k => path_info.get(k, 'npm') |
 new Task(  'update', () =>
     ops.length ? update( pathInfos(ops) )
                : update( npmOrMeteor().map(k => path_info.get(k)) ),
-    { dotsat: 0, test: 0, description: 'Update packages.', thirdCommand: 1 }  )
+    { dotsat: 1, test: 0, description: 'Update packages.', thirdCommand: 1 }  )
 
 const filter = p => path_info.keys().filter( k => path_info.get(k, p) )
 const pathInfos = a => a.map(k => path_info.get(k))
@@ -240,12 +253,12 @@ const pathInfos = a => a.map(k => path_info.get(k))
 new Task(  'npm-update', () =>
     ops.length ? npmUpdate(  npmArray( ops.map(k => path_info.get(k)) ) )
                : npmUpdate(  npmArray( filter('npm').map( k => path_info.get(k) ) ) ),
-    { dotsat: 0, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
+    { dotsat: 1, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
 
 new Task(  'npm-install', () =>
     ops.length ? npmInstall( npmArray( pathInfos(ops) ) )
                : npmInstall( npmArray( filter('npm').map( k => path_info.get(k) ) ) ),
-    { dotsat: 0, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
+    { dotsat: 1, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
 
 const testArray = a => a.map(v => ({name: v.name, prefix: test_path, path: v.path}))
 new Task(  'npm-test-install', () =>
@@ -253,12 +266,12 @@ new Task(  'npm-test-install', () =>
                : npmInstall( testArray( pathInfos( filter('npmTest') ) ) ),
     { dotsat: 0, test: 0, description: 'Install local npm modules for test site.', thirdCommand: 1 }  )
 
-new Task(  'exports', () => {
+new Task(  'script', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
         console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  )
     path_info.keys().filter( (v,i,a) => path_info.get(v, 'cd') ).forEach( v =>
             console.log( `alias cd-${v}='cd`, path_info.get(v, 'path') + "'" )  )
-    console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.val) ) + "'" ) },
+    console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.value) ) + "'" ) },
     { dotsat: 0, test: 0, description: 'Print export .env $. <(sat exports)' }  )
 
 new Task(  'git-push', () =>
@@ -271,16 +284,16 @@ new Task(  'run', () => meteorRun(),
 new Task(  'test', () => {
     paths2test.forEach( d => {
         let target, source
-        fs.unlink(  target = test_path.path(d).val, () =>
-            fs.existsSync( source = site_path.path(d).val )   &&
+        fs.unlink(  target = test_path.path(d).value, () =>
+            fs.existsSync( source = site_path.path(d).value )   &&
             fs.symlink(  source, target, () =>
                 console.log(new Date(), source)  )  )  })
-    fs.readdir(  test_path.val, (e, list) => {
+    fs.readdir(  test_path.value, (e, list) => {
         e || list.forEach( f => path.extname(f) === '.js'     &&
-        fs.unlink( test_path.path(f).val ) )
-        fs.readdir(  site_path.val, (e, list) =>
+        fs.unlink( test_path.path(f).value ) )
+        fs.readdir(  site_path.value, (e, list) =>
             e || list.forEach( f => path.extname(f) === '.js' &&
-            fs.link( site_path.path(f).val, test_path.path(f).val, () =>
+            fs.link( site_path.path(f).value, test_path.path(f).value, () =>
                 console.log(new Date(), f) ) )  )  })
     meteorRun(test_path, '3300') },
     { dotsat: 1, test: 0, description: 'Test environment.', settings: 1 })
@@ -305,11 +318,11 @@ options = in$({})
 
 path_info = in$({
     home:      { type: "user",    name: "home",              path: home },
-    sat:       { type: "user",    name: "cubesat",           path: cubesat_path },
-    module:    { type: "user",    name: "module",            path: node_modules },
+    cubesat:   { type: "user",    name: "cubesat",           path: cubesat_path, cd:1 },
+    module:    { type: "user",    name: "module",            path: node_modules, cd:1 },
     settings:  { type: "user",    name: "settings",          path: settings_path },
     ws:        { type: "user",    name: "workspace",         path: workspace,         cd:1 },
-    site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:1 },
+    site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:0 },
     test:      { type: "site",    name: "test",              path: test_path,         cd:1 },
     cs:        { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),     cd:1,
                  npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
