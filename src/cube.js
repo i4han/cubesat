@@ -4,7 +4,7 @@ let mongo = {connected:[]}
 __._db = {}
 
 const mongoServer = (m, cs) => {
-  __.isArray(cs) && (console.log('array') || (cs = __.object({}, cs, Array(cs.length).fill({}))))
+  __.isArray(cs) && (cs = __.object({}, cs, Array(cs.length).fill({})))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
       mongo.connected.push(k)
       __._db[k] = new Mongo.Collection(k)
@@ -22,8 +22,8 @@ const subscribe   = (m, k) => {
     // console.log(k, __._db[k].subscribes)
     __._db[k].subscribes.filter(f => __.isFunction(f)).map(f => f(m, __._db[k])) }
 
-const mongoClient = (m, cs) => {
-  __.isArray(cs) && (console.log('array') || (cs = __.object({}, cs, Array(cs.length).fill({}))))
+const mongoClient = (m, cs) => { // cs: collections. ex: 'Depth'
+  __.isArray(cs) && (cs = __.object({}, cs, Array(cs.length).fill({})))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
       mongo.connected.push(k)
       __._db[k] = new Mongo.Collection(k)

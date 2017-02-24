@@ -1,19 +1,18 @@
 'use strict'
+
 // Sat -> __.__.web.name() __._part. __._settings. __._attrPart.
 // this variables -> this._
 // properties -> router
 // collections -> mongo
 // const in$ = require('incredibles')
-
-if (typeof Meteor === "undefined") {
-    global.cube = {}
-    global.__  = require('underscore2')  }
+// if (typeof Meteor === "undefined") {
+//     global.cube = {}
+//     global.__  = require('underscore2')  }
 
 __._Modules   = {}
 __._Settings  = {}
 __._Parts     = {}
 __._AttrParts = {}
-
 
 class Module {
    constructor(name) {
@@ -55,6 +54,7 @@ class Module {
        }
        // add local and $
        if (!o) return this
+       __.isFunction(o) && console.log(0, this.user, 1, o, 2, __.isFunction(o), typeof o, 3, o(this.user) )
        __.isFunction(o) && (o = o(this.user))
        __.assign(this.user, o)
        return this }
@@ -113,29 +113,27 @@ class Settings {
     }  }
 
 class Cube {
-   constructor() {
-      this.module  = {}
-      this.part    = {}
-      this.setting = {} }
-   add(...args) {
-      args.forEach( i =>
-        i instanceof Module   ? (this.module[i.name()] = i)   :
-        i instanceof Parts    ? __.assign(this.part, i.part)  :
-        i instanceof Settings ? __.assign(this.setting, i.setting) : undefined )
-      return this }
-   finish() { return this } }
+    constructor() {
+        this.module  = {}
+        this.part    = {}
+        this.setting = {} }
+    add(...args) {
+        args.forEach( i =>
+            i instanceof Module   ? (this.module[i.name()] = i)   :
+            i instanceof Parts    ? __.assign(this.part, i.part)  :
+            i instanceof Settings ? __.assign(this.setting, i.setting) : undefined )
+        return this }
+    finish() { return this } }
 
 class View {
-   constructor(view) {
-      this.view = view
-      __.keys(__._Parts).forEach(k => this[k] = __._Parts[k].bind(__._Parts, view))
-      //__.keys(Sat.part).forEach(k => this[k] = Sat.part[k].bind(Sat.part, view))
-   } }
+    constructor(view) {
+        this.view = view
+        __.keys(__._Parts).forEach(k => this[k] = __._Parts[k].bind(__._Parts, view))  }  }
 
-__.Cube     = ()        => new Cube()
-__.Module   = name      => new Module(name)
-__.Parts    = parts     => new Parts(parts)
-__.Settings = settings  => new Settings(settings)
+__.Cube     = ()        =>  new Cube()
+__.Module   = name      =>  new Module(name)
+__.Parts    = parts     =>  new Parts(parts)
+__.Settings = settings  =>  new Settings(settings)
 __.View     = view      => [new View(view), __.module(view)]
 __.Template = (...args) => args.slice(1)
 
