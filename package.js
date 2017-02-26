@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor.',
-    "version": "0.6.69",
+    "version": "0.6.72",
     git: 'https://github.com/i4han/cubesat.git',
     documentation: 'README.md'
 });
@@ -26,7 +26,7 @@ Package.on_use( function (api) {
     api.export( '__',       ['client', 'server'] )
 //    api.export( 'db',       ['client', 'server'] )
     api.export( 'cube',     ['client', 'server'] )
-    api.export( 'Sat',      ['client', 'server'] )
+    // api.export( 'Sat',      ['client', 'server'] )
 //    api.export( 'Settings', ['client', 'server'] )
 //    api.export( 'Parts',    ['client', 'server'] )
 //    api.export( 'Modules',  ['client', 'server'] )

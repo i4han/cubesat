@@ -25,7 +25,7 @@ let mustacheAttr = (v, f) =>
 
 let blazeAttr = (_, obj) => {
   let f  = cube.lookupInAttr.bind(null, _)
-  let fo = __.fixup.call({ part: Sat.attrPart }, obj)
+  let fo = __.fixup.call({ part: __._AttrParts }, obj)
   let o  = __.reduceKeys(fo, {}, (o, k) =>
       __.check('class', k) && fo[k].indexOf('*') > -1 ?
         __.object(o, 'class', mustacheAttr(attributeClass(k, fo[k]), f)) :
@@ -38,7 +38,7 @@ let mustache = (_, a) => {
   let f = cube.lookupInView.bind(null, _)
   return __.isArray(a) ? __.reduce(a, [], (o, v) => __.array(o, mustacheAttr(v, f))) : mustacheAttr(a, f) }
 
-cube.installParts = () => __.eachKeys(Sat.part, (k) => part[k] = Sat.part[k])
+cube.installParts = () => __.eachKeys(__._Parts, (k) => part[k] = __._Parts[k])
 
 htmlTags.forEach(tag =>
   html[tag] = (_, ...obj) =>
@@ -128,7 +128,7 @@ let styleLoop = function(obj) {
 
 cube.Style = function(_) {
   var obj;
-  _.part = Sat.attrPart;
+  _.part = __._AttrParts;
   return style$(__.reduceKeys((obj = __.fixup.call(_, _.style)), {}, (function(_this) {
     return function(o, k) {
       return __.object(o, idclassKey.call(_, k), styleLoop.call(_, obj[k]));

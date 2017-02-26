@@ -3,8 +3,8 @@
 const fs     = require('fs')
 const path   = require('path')
 const dotenv = require('dotenv')
-const __     = require('underscore2')
-const inc    = require('incredibles')('$')
+// const __     = require('underscore2')
+const inc    = require('incredibles')
 const argv   = require('minimist')(process.argv.slice(3))
 const {spawn, exec} = require('child_process')   // , spawn = ref.spawn, exec = ref.exec
 const dot_env       = '.env'
@@ -13,20 +13,22 @@ const package_json  = 'package.json'
 const packages_dir  = 'packages'
 
 require.main !== module && ( () => {
-    const gulp = require('gulp')
-    const mod  = v => require(v)()
+    const gulp  = require('gulp')
+    const valve = (v, ...o) => require(v)(...o)
     paths = {
         src: "./src/*.js"
       , doc: "./doc"  }
     gulp.task( 'doc', () => {
         gulp.src(paths.src)
-        .pipe(mod("gulp-markdox"))
-        .pipe(gulp.dest(paths.doc)) })  })()
+        .pipe( valve("gulp-markdox") )
+        .pipe( gulp.dest(paths.doc) ) })
+})()
 
 findDir = d => process.cwd().split('/').concat('').$
     .reduce( ( (a,v,i,ar) => a.insert( i, ar.slice(0, -i - 1) ) ), [].$ )
-    .until( v => fs.existsSync( v.join('/').$.path(d).__ ) )
-    .if( v => v.typeof('array') ).then( v => v.join('/').$ ).else(''.$ ).result
+    .find$( v => fs.existsSync( v.join('/').$.path(d).__ ) )
+    .if( v => v.typeof('array') ).then( v => v.join('/').$ )
+    .else( ''.$ ).result
 
 const home          = process.env.HOME.$
 home.path(dot_env).if( v => fs.existsSync( v.__ ) ).then( v => dotenv.config( {path: v.__} ) )
@@ -50,17 +52,15 @@ class Task {
         this.name = name
         this.fn = fn
         this.options = options || {}
-        this._ = {}
         taskBook.set(name, this) }  }
 
 let Settings = inc.$({})
-__.Settings = sobj => {
-    if ('function' === typeof sobj) {
-        let _set = inc.$({}).oset(Settings, sobj({}))
-        Settings.oset( inc.$(sobj(_set)).fnValue(_set) )  }
-    else inc.$(sobj)
-        .if( v => v.typeof('object') )
-        .then( v => Settings.oset( v.fnValue( inc.$({}).oset( Settings, v.__ ) ) ) ) }
+__.Settings = obj => inc.$(obj)
+    .if( v => v.typeof('function') )
+    .then( v => console.log( v.prop( 0, inc.$({}).oset(Settings, obj({})) ).prop(0) ) )
+    .then( v =>  Settings.oset( inc.$( obj( v.prop(0)) ).evalProperties( v.prop(0) ) ) )
+    .else_if( v => v.typeof('object') )
+    .then( v => Settings.oset(v.evalProperties( inc.$({}).oset(Settings, v.__) )) )
 
 const isCommand = f => require.main === module && f()
 

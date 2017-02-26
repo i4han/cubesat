@@ -1,19 +1,6 @@
 'use strict'
 
 cube     = {}
-Sat      = {
-	// cube:     {},
-	// module:   {},
-	part:     {},
-	attrPart: {},
-	// setting:  {},
-	// _server_startups: [],
-	// _client_startups: []
-}
-
-// module   = {}
-// Modules  = {}
-// Parts    = {}
 
 __._Modules   = {}
 __._Settings  = {}
@@ -21,9 +8,9 @@ __._Parts     = {}
 __._AttrParts = {}
 
 if (Meteor.isServer) {
-	Settings = Meteor.settings ? Meteor.settings : {}
+	// Settings = Meteor.settings ? Meteor.settings : {}
 } else if (Meteor.isClient) {
-	Settings = {}
+	// Settings = {}
 	Meteor.settings = Meteor.settings || {}
 	'public' in Meteor.settings && (Settings = Meteor.settings.public)
 }
@@ -31,10 +18,6 @@ if (Meteor.isServer) {
 
 class Module {
    constructor(name) {
-    //   if (typeof Sat !== 'undefined')
-    //      if (name in Sat.module)
-    //         return Sat.module[name]
-    //      else Sat.module[name] = this
       if (name in __._Modules) return __._Modules[name]
       else __._Modules[name] = this
       this._    = this._    || {}
@@ -47,7 +30,6 @@ class Module {
       let uniqueName = this.name() + (this._.hash ? '-' + this._.hash : '-local')
       return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
    template(t) {
-    //   console.log(this._.name + ' from template')
       if (!t) return this._.template
       return __.object(this, '_.template', t)
    }
@@ -61,16 +43,11 @@ class Module {
    properties (o) {
        if (!o && this.user.Module) return this
        this.user.Db        = __._db
-       if ('undefined' !== typeof Sat && Sat) { // error
-           // this.user.Settings  = __._Settings // has not loaded yet!
-           this.user.Settings  = __._Settings // Meteor.settings
-           this.user.Parts     = __._Parts
-           this.user.AttrParts = __._AttrParts
-           this.user.Modules   = __._Modules
-       }
-       // add local and $
+       this.user.Settings  = __._Settings
+       this.user.Parts     = __._Parts
+       this.user.AttrParts = __._AttrParts
+       this.user.Modules   = __._Modules
        if (!o) return this
-       __.isFunction(o) && console.log(0, this.user, 1, o, 2, __.isFunction(o), typeof o, 3, o(this.user) )
        __.isFunction(o) && (o = o(this.user))
        __.assign(this.user, o)
        return this }
@@ -111,9 +88,6 @@ class Parts {
       __.eachKeys(parts, k => {
          __.isFunctionPartKey(k) && (this.part[k] = parts[k])
          __.isAttrPartKey(k)     && (this.attrPart[k] = parts[k]) })
-      if (typeof Sat !== 'undefined') {
-         __.assign(Sat.part, this.part)  // client ionic.js Sat.parts
-         __.assign(Sat.attrPart, this.attrPart) }
      __.assign(__._Parts, this.part)
      __.assign(__._AttrParts, this.attrPart)
      } }
