@@ -153,7 +153,7 @@ const gitPush = (commit, paths) => {
     spawn_command('git', 'add', ['.'], p).on(  'exit', code =>
         spawn_command('git', 'commit', ['-m', commit], p).on(  'exit', code =>
             code ? paths.length ? gitPush( commit, paths ) : undefined
-                 : spawn_command('git', 'push', [], paths[0]).on(  'exit', code =>
+                 : spawn_command('git', 'push', [], p).on(  'exit', code =>
                    paths.length ? gitPush( commit, paths ) : undefined  )  )  )  }
 const editFile = (file, func, action) =>
     fs.readFile(  file.__, 'utf8', (e, data) => error(e) ||
