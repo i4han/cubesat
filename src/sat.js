@@ -3,7 +3,6 @@
 const fs     = require('fs')
 const path   = require('path')
 const dotenv = require('dotenv')
-// const __     = require('underscore2')
 const inc    = require('incredibles')
 const argv   = require('minimist')(process.argv.slice(3))
 const {spawn, exec} = require('child_process')   // , spawn = ref.spawn, exec = ref.exec
@@ -37,7 +36,9 @@ const dot_sat_path  = site_path.path( '.sat' )
 const mobile_config = site_path.path( 'mobile-config.js' )
 const dot_cubesat   = '.cubesat'
 const cubesat_path  = findDir( dot_cubesat ).if( v => v.is('') ).then(home).else(v => v).result
-const settings_path = cubesat_path.path( dot_cubesat, 'settings.js' )
+const site_settings = site_path.path( 'lib', 'settings.js' ).__
+const deploy_settings = site_path.path( '.settings.json' ).__
+const global_settings = cubesat_path.path( dot_cubesat, 'settings.js' )
 const workspace     = ( process.env.WORKSPACE || home.path('workspace') ).$
 const test_path     = workspace.path( 'test' )
 const packages_path = test_path.path( packages_dir )
@@ -56,11 +57,11 @@ class Task {
 
 let Settings = inc.$({})
 __.Settings = obj => inc.$(obj)
-    .if( v => v.typeof('function') )
-    .then( v => console.log( v.prop( 0, inc.$({}).oset(Settings, obj({})) ).prop(0) ) )
-    .then( v =>  Settings.oset( inc.$( obj( v.prop(0)) ).evalProperties( v.prop(0) ) ) )
+    .if(   v => v.typeof('function') )
+    .then( v => v.prop( 0, inc.$({}).oset(Settings, obj({})) ) )
+    .then( v => Settings.oset( inc.$( obj(v.prop(0)) ).evaluateProperties(v.prop(0)) ) )
     .else_if( v => v.typeof('object') )
-    .then( v => Settings.oset(v.evalProperties( inc.$({}).oset(Settings, v.__) )) )
+    .then( v => Settings.oset(v.evaluateProperties( inc.$({}).oset(Settings, v.__) )) )
 
 const isCommand = f => require.main === module && f()
 
@@ -78,9 +79,9 @@ const cd = d => process.chdir(d.valueOf())
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 const spawn_command = (bin, command, args, path) => {
-  console.log( '  ', ([bin, command].concat(args)).join(' ') )
-  path && ( cd(path) || console.log('  ', path.__ ) )
-  return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
+    [' ', bin, command, ...args].join(' ').$.log()
+    path && ( cd(path) || path.log(' ') )
+    return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
 /*
 mobile_config = function() {
@@ -134,11 +135,11 @@ install_mobile = () => {
 isCommand( () => taskBook.get(command, 'fn')() )    // task_command.call()
 
 function handleErrors () {
-    taskTogo || error_quit(`fatal: Unknown command "${command}"`)
+    taskTogo.__ || error_quit(`fatal: Unknown command "${command}"`)
     taskTogo.dget('options.dotsat')   && (site_path.__ || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
     taskTogo.dget('options.arg0')     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
     taskTogo.dget('options.test')     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
-    taskTogo.dget('options.settings') && require( site_path.path( 'lib', 'settings.js' ).__ )  }
+    taskTogo.dget('options.settings') && require( site_settings )  }
 
 function main () {
 
@@ -169,11 +170,11 @@ const publish = paths => {
                         npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )
                       : paths.length ? publish(paths) : {}  )
                  : npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )  }
-const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--port', port || '3000']), path || site_path )
+const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--port', port || '3000', '--settings', deploy_settings]), path || site_path )
 const npmUpdate = npms => {
     if (!npms.length) return
     let v = npms.shift()
-    spawn_command(    'npm', 'remove', [v.name, '--save',  '--prefix', v.prefix], v.path ).on(  'exit', () =>
+    spawn_command(    'npm', 'remove',  [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
         spawn_command('npm', 'install', [v.name, '--save', '--prefix', v.prefix], v.path )  ).on(  'exit', () =>
             npmUpdate(npms)  )  }
 const meteorUpdate = (npms, meteors) => {
@@ -265,10 +266,10 @@ new Task(  'npm-test-install', () =>
 
 new Task(  'script', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
-        console.log( data.replace(/^\s*([a-zA-Z])/mg, "export $1") )  )
+        data.replace(/^\s*([a-zA-Z])/mg, "export $1").$.log() )
     path_info.keys().filter( (v,i,a) => path_info.get(v, 'cd') ).forEach( v =>
             console.log( `alias cd-${v}='cd`, path_info.get(v, 'path') + "'" )  )
-    console.log( "export CUBESAT_SETTINGS='" + JSON.stringify( require(settings_path.__) ) + "'" ) },
+    global_settings.require$().stringify$().log(v => `export GLOBAL_SETTINGS='${v}'`)  },
     { dotsat: 0, test: 0, description: 'Print export .env $. <(sat exports)' }  )
 
 new Task(  'git-push', () =>
@@ -286,7 +287,7 @@ new Task(  'test', () => {
             fs.symlink(  source, target, () =>
                 console.log(new Date(), source)  )  )  })
     fs.readdir(  test_path.__, (e, list) => {
-        e || list.forEach( f => path.extname(f) === '.js'     &&
+        e || list.forEach( f => path.extname(f) === '.js'    &&
         fs.unlink( test_path.path(f).__ ) )
         fs.readdir(  site_path.__, (e, list) =>
             e || list.forEach( f => path.extname(f) === '.js' &&
@@ -300,10 +301,39 @@ new Task(  'publish', () => {
     else publish( pathInfos( npmOrMeteor() ) )  },
     { dotsat: 0, test: 0, description: 'Publish Meteor packages.' })
 
-new Task(  'settings', () => {
-        console.log(Settings.__)},
+new Task(  'api-url', () => {
+    __._Settings = Settings.__
+    inc.meteor.queryString(__._Settings.google.maps.options).$.log() },
+    {dotsat: 0, test: 0, description: 'Settings', settings: 1})
+
+new Task(  'settings', () => Settings.log(),
     {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
+let settings_json =
+new Task(  'settings.json', () =>
+    fs.readFile(site_settings, 'utf-8', (e, data) =>
+        inc.object({
+            public: JSON.parse(process.env.GLOBAL_SETTINGS).public
+          , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg).$
+                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), inc.object() ).__
+        }  }).stringify$(null, 4).pipe( v => fs.writeFile(deploy_settings, v.__, () => {}))  )
+  , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
+
+new Task(  'global-settings', () =>
+    process.env.GLOBAL_SETTINGS.$.parseJson$().log()
+  , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
+
+new Task(  'deploy', () =>
+    spawn_command( 'meteor', 'deploy', ['--settings', '.settings.json', process.env.DEPLOY_URL], site_path )
+  , {dotsat: 1, test: 0, description: 'Deploy meteor', settings: 1})
+
+new Task(  'geo', () =>
+    spawn_command( 'node', 'geo.js', [], workspace.path('dev') )
+  , {dotsat: 0, test: 0, description: 'Deploy meteor', settings: 0})
+
+
+//meteor deploy --settings settings.json map.meteorapp.com
+//meteor deploy --settings settings.json map.meteorapp.com
 tasks = inc.$({
     create:     { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
     deploy:     { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
@@ -317,7 +347,7 @@ path_info = inc.$({
     home:      { type: "user",    name: "home",              path: home },
     cubesat:   { type: "user",    name: "cubesat",           path: cubesat_path, cd:1 },
     module:    { type: "user",    name: "module",            path: node_modules, cd:1 },
-    settings:  { type: "user",    name: "settings",          path: settings_path },
+    settings:  { type: "user",    name: "settings",          path: global_settings },
     ws:        { type: "user",    name: "workspace",         path: workspace,         cd:1 },
     site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:0 },
     test:      { type: "site",    name: "test",              path: test_path,         cd:1 },

@@ -17,60 +17,59 @@ if (Meteor.isServer) {
 
 
 class Module {
-   constructor(name) {
-      if (name in __._Modules) return __._Modules[name]
-      else __._Modules[name] = this
-      this._    = this._    || {}
-      this.user = this.user || {}
-      this.user.name  = this._.name  = name
-      this.user.label = this._.label = __.capitalize(name)
-  }
-   name() { return this._.name }
-   local(id) {
-      let uniqueName = this.name() + (this._.hash ? '-' + this._.hash : '-local')
-      return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
-   template(t) {
-      if (!t) return this._.template
-      return __.object(this, '_.template', t)
-   }
-   init(f) {
-     this._init = f
-     return this }
-   assign(k, o) {
-     if (__.isUndefined(o)) return this
-     __.object(this[k], __.return(o, this))
-     return this }
-   properties (o) {
-       if (!o && this.user.Module) return this
-       this.user.Db        = __._db
-       this.user.Settings  = __._Settings
-       this.user.Parts     = __._Parts
-       this.user.AttrParts = __._AttrParts
-       this.user.Modules   = __._Modules
-       if (!o) return this
-       __.isFunction(o) && (o = o(this.user))
-       __.assign(this.user, o)
-       return this }
-   mongo      (o) {
+    constructor(name) {
+       if (name in __._Modules) return __._Modules[name]
+       else __._Modules[name] = this
+       this._    = this._    || {}
+       this.user = this.user || {}
+       this.user.name  = this._.name  = name
+       this.user.label = this._.label = __.capitalize(name)  }
+    name() { return this._.name }
+    local(id) {
+       let uniqueName = this.name() + (this._.hash ? '-' + this._.hash : '-local')
+       return id[0] === '#' ? '#' + uniqueName + '-' + id.slice(1) : uniqueName + '-' + id }
+    template(t) {
+       if (!t) return this._.template
+       return __.object(this, '_.template', t)  }
+    init(f) {
+       this._init = f
+       return this  }
+    assign(k, o) {
+        if (__.isUndefined(o)) return this
+        __.object(this[k], __.return(o, this))
+        return this  }
+    properties (o) {
+        if (!o && this.user.Module) return this
+        this.user.Db        = __._db
+        this.user.Settings  = __._Settings
+        this.user.Parts     = __._Parts
+        this.user.AttrParts = __._AttrParts
+        this.user.Modules   = __._Modules
+        if (!o) return this
+        __.isFunction(o) && (o = o(this.user))
+        __.assign(this.user, o)
+        return this }
+    mongo      (o) {
         __.isArray(o) && (o = __.object({}, o, Array(o.length).fill({})))
         return __.object(this, '_.mongo', o) }
-   head       (o) {
-       __.isFunction(o) && (o = o(this.properties().user))
-       return __.object(this, '_.head',    o) }
-   router     (o) { return __.object(this, '_.router',  o) }
-   helpers    (o) {
-       __.isFunction(o) && (o = o(this.properties().user))
-       return __.object(this, '_.helpers', o) }
-   events     (o) { return __.object(this, '_.events',  o) }
-   methods    (o) { return __.object(this, '_.methods', o) }
-   style      (o) { return __.object(this, '_.style',   o) }
-   onStartup  (f) { return __.object(this, '_.onStartup',   f(this.properties().user)) }
-   onServer   (f) { return __.object(this, '_.onServer',    f(this.properties().user)) }
-   onRendered (f) { return __.object(this, '_.onRendered',  f(this.properties().user)) }
-   onDestroyed(f) { return __.object(this, '_.onDestroyed', f(this.properties().user)) }
-   onCreated  (f) { return __.object(this, '_.onCreated',   f(this.properties().user)) }
-   fn(o) {
-     __.eachKeys(o, k => this[k] = o[k].bind(this))
+    head       (o) {
+        __.isFunction(o) && (o = o(this.properties().user))
+        return __.object(this, '_.head',    o) }
+    router     (o) { return __.object(this, '_.router',  o) }
+    helpers    (o) {
+        __.isFunction(o) && (o = o(this.properties().user))
+        return __.object(this, '_.helpers', o) }
+    events     (o) { return __.object(this, '_.events',  o) }
+    script     (o) { return __.object(this, '_.script',  o) }
+    methods    (o) { return __.object(this, '_.methods', o) }
+    style      (o) { return __.object(this, '_.style',   o) }
+    onStartup  (f) { return __.object(this, '_.onStartup',   f(this.properties().user)) }
+    onServer   (f) { return __.object(this, '_.onServer',    f(this.properties().user)) }
+    onRendered (f) { return __.object(this, '_.onRendered',  f(this.properties().user)) }
+    onDestroyed(f) { return __.object(this, '_.onDestroyed', f(this.properties().user)) }
+    onCreated  (f) { return __.object(this, '_.onCreated',   f(this.properties().user)) }
+    fn(o) {
+        __.eachKeys(o, k => this[k] = o[k].bind(this))
      return this  }
    $ (v) { return $(this.local(v)) }
    build(name) {
@@ -161,8 +160,13 @@ const mongoClient = (m, cs) => { // cs: collections. ex: 'Depth'
       cs[k].collections && mongoClient(m, cs[k].collections) }) // shoud be in subscribe()
       m.collection = cs} // ???
 
-const head = o => __.eachKeys(o, k => $('head').append(HTML.toHTML(HTML[k.toUpperCase()](o[k]))))
+const head = o => __.eachKeys(  o, k => {
+    __.isArray(  o[k]
+      , () => o[k].forEach( v => $('head').append(HTML.toHTML( HTML[ k.toUpperCase() ](v) )) )
+      , () => $('head').append(HTML.toHTML( HTML[ k.toUpperCase() ](o[k]) ))  )  })
 
+const _toScript = f => f.toString().replace( /\s*function\s*\(\s*\)\s*\{([^]*)\}\s*/, '$1') // firefox toString: () => {}
+const script = f => $('html').append( HTML.toHTML(HTML.SCRIPT( _toScript(f) )) )
 const router = (o, m) => {
     // console.log('Router', o, )
     o.defaultLayout && (Router.configure({layoutTemplate: m._.name}), __.pop('defaultLayout'))
@@ -185,6 +189,7 @@ Meteor.startup(() => {
       _ = __._Modules[n]
       _._.style              &&  cube.Style(_._)
       ;(v = _._.head)        &&  head(v)
+      ;(v = _._.script)      &&  script(v)
       ;(v = _._.router)      && (__.isEmpty(v) || router(v, _))
       ;(v = _._.mongo)       &&  mongoClient(_.user, v)
       ;(v = _._.onStartup)   &&  v.call(_, _)
