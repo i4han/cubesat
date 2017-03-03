@@ -45,6 +45,7 @@ class Module {
         this.user.Parts     = __._Parts
         this.user.AttrParts = __._AttrParts
         this.user.Modules   = __._Modules
+        this.user.Public    = Meteor.settings.public
         if (!o) return this
         __.isFunction(o) && (o = o(this.user))
         __.assign(this.user, o)

@@ -1,5 +1,7 @@
 'use strict'
 
+window.in$ = require('incredibles')
+
 window.blaze = {}
 window.cube  = {}
 window.html  = {}
