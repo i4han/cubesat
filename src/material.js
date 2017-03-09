@@ -7,6 +7,7 @@ window.cube  = {}
 window.html  = {}
 window.part  = {}
 
+
 cube.lookup       = (_, v) => Spacebars.call(_.lookup(v))
 cube.lookupInView = (_, v) => Blaze.View('lookup:' + v, () => Spacebars.mustache(_.lookup(v)))
 cube.lookupInAttr = (_, v) => Spacebars.mustache(_.lookup(v))
@@ -38,13 +39,18 @@ let blazeAttr = (_, obj) => {
 
 let mustache = (_, a) => {
   let f = cube.lookupInView.bind(null, _)
-  return __.isArray(a) ? __.reduce(a, [], (o, v) => __.array(o, mustacheAttr(v, f))) : mustacheAttr(a, f) }
+  return __.isArray(a) ? __.reduce(a, [], (o, v) => __.array(o, mustacheAttr(v, f)))
+                       : mustacheAttr(a, f)  }
+
+  // mustacheAttr( a, cube.lookupInView.bind(null, _) )
+  // cube.lookupInView = (_, v) => Blaze.View('lookup:' + v, () => Spacebars.mustache(_.lookup(v)))
+  // mustacheAttr( a, (v, f) => Blaze.View('lookup:' + v, () => Spacebar.mustache(_.lookup(v))) )
 
 cube.installParts = () => __.eachKeys(__._Parts, (k) => part[k] = __._Parts[k])
 
 htmlTags.forEach(tag =>
   html[tag] = (_, ...obj) =>
-    __.isBlazeAttr(obj[0]) ?
+    __.isBlazeAttr(obj[0]) ? //
       obj.length === 1 ? HTML[tag](blazeAttr(_, obj[0])) :
                          HTML[tag](blazeAttr(_, obj[0]), mustache(_, obj.slice(1))) :
       obj.length === 0 ? HTML[tag]() :

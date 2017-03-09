@@ -15,7 +15,6 @@ if (Meteor.isServer) {
 	'public' in Meteor.settings && (Settings = Meteor.settings.public)
 }
 
-
 class Module {
     constructor(name) {
        if (name in __._Modules) return __._Modules[name]
@@ -31,6 +30,7 @@ class Module {
     template(t) {
        if (!t) return this._.template
        return __.object(this, '_.template', t)  }
+    templat_ (t) { return this }
     init(f) {
        this._init = f
        return this  }
@@ -56,6 +56,7 @@ class Module {
     head       (o) {
         __.isFunction(o) && (o = o(this.properties().user))
         return __.object(this, '_.head',    o) }
+    body       (o) { return __.object(this, '_.body',    o) }
     router     (o) { return __.object(this, '_.router',  o) }
     helpers    (o) {
         __.isFunction(o) && (o = o(this.properties().user))
@@ -196,6 +197,8 @@ Meteor.startup(() => {
       ;(v = _._.onStartup)   &&  v.call(_, _)
       //;(v = _.property.path) &&  Router.route(n, {path: v, layoutTemplate: _.property.layout || 'layout'})
       ;(v = _._.template)    && (Template[n] = new Template('Template.' + n, v))
+      ;(v = _._.body)        && (Template[n] = new Template('Template.' + n,
+            ((v, name) => function () { return v(in$.template(this, name)) })(v, _.name()) ))
       ;(v = _._.events)      &&  Template[n] && Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
       ;(v = _._.helpers)     &&  Template[n] && Template[n].helpers(v) // __.function(v)
       ;(v = _._.onRendered)  &&  Template[n].onRendered(v) // __.function(v)

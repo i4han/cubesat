@@ -3,7 +3,7 @@
 const fs     = require('fs')
 const path   = require('path')
 const dotenv = require('dotenv')
-const inc    = require('incredibles')
+const in$    = require('incredibles')
 const argv   = require('minimist')(process.argv.slice(3))
 const {spawn, exec} = require('child_process')   // , spawn = ref.spawn, exec = ref.exec
 const dot_env       = '.env'
@@ -20,16 +20,15 @@ require.main !== module && ( () => {
     gulp.task( 'doc', () => {
         gulp.src(paths.src)
         .pipe( valve("gulp-markdox") )
-        .pipe( gulp.dest(paths.doc) ) })
-})()
+        .pipe( gulp.dest(paths.doc) ) })  })()
 
-findDir = d => process.cwd().split('/').concat('').$
-    .reduce( ( (a,v,i,ar) => a.insert( i, ar.slice(0, -i - 1) ) ), [].$ )
-    .find$( v => fs.existsSync( v.join('/').$.path(d).__ ) )
-    .if( v => v.typeof('array') ).then( v => v.join('/').$ )
-    .else( ''.$ ).result
+findDir = d => process.cwd().split('/').concat('').into$
+    .reduce( ( (a,v,i,ar) => a.insert( i, ar.slice(0, -i - 1) ) ), [].into$ )
+    .find$( v => fs.existsSync( v.join('/').into$.path(d).__ ) )
+    .if( v => v.typeof('array') ).then( v => v.join('/').into$ )
+    .else( ''.into$ ).result
 
-const home          = process.env.HOME.$
+const home          = process.env.HOME.into$
 home.path(dot_env).if( v => fs.existsSync( v.__ ) ).then( v => dotenv.config( {path: v.__} ) )
 const site_path     = findDir( '.sat' )
 const dot_sat_path  = site_path.path( '.sat' )
@@ -39,13 +38,13 @@ const cubesat_path  = findDir( dot_cubesat ).if( v => v.is('') ).then(home).else
 const site_settings = site_path.path( 'lib', 'settings.js' ).__
 const deploy_settings = site_path.path( '.settings.json' ).__
 const global_settings = cubesat_path.path( dot_cubesat, 'settings.js' )
-const workspace     = ( process.env.WORKSPACE || home.path('workspace') ).$
+const workspace     = ( process.env.WORKSPACE || home.path('workspace') ).into$
 const test_path     = workspace.path( 'test' )
 const packages_path = test_path.path( packages_dir )
 const node_modules  = process.env.NODE_MODULES || findDir( 'node_modules' ) || home // NODE_MODULES is not standard. but
 const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
-let taskBook = inc.$({}), path_info
+let taskBook = in$.from({}), path_info, paths
 let tasks, options
 
 class Task {
@@ -55,20 +54,20 @@ class Task {
         this.options = options || {}
         taskBook.set(name, this) }  }
 
-let Settings = inc.$({})
-__.Settings = obj => inc.$(obj)
+let Settings = in$.from({})
+__.Settings = obj => in$.from(obj)
     .if(   v => v.typeof('function') )
-    .then( v => v.prop( 0, inc.$({}).oset(Settings, obj({})) ) )
-    .then( v => Settings.oset( inc.$( obj(v.prop(0)) ).evaluateProperties(v.prop(0)) ) )
+    .then( v => v.prop( 0, in$.from({}).assign(Settings, obj({})) ) )
+    .then( v => Settings.assign( in$.from( obj(v.prop(0)) ).invokeProperties(v.prop(0)) ) )
     .else_if( v => v.typeof('object') )
-    .then( v => Settings.oset(v.evaluateProperties( inc.$({}).oset(Settings, v.__) )) )
+    .then( v => Settings.assign(v.invokeProperties( in$.from({}).assign(Settings, v.__) )) )
 
 const isCommand = f => require.main === module && f()
 
 isCommand( main )
 let command = process.argv[2] || 'help'
 // console.log(command, taskBook.val, 0, taskBook.get('help').get('fn'))
-const taskTogo = taskBook.get$(command)
+const taskTogo = taskBook.get(command).into$
 const arg0 = argv._[0]
 const error = e => e && (console.error(e) || true)
 const error_quit = e =>  console.error(e) || process.exit(1)
@@ -79,7 +78,7 @@ const cd = d => process.chdir(d.valueOf())
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 const spawn_command = (bin, command, args, path) => {
-    [' ', bin, command, ...args].join(' ').$.log()
+    [' ', bin, command].concat(args).join(' ').into$.log()
     path && ( cd(path) || path.log(' ') )
     return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
@@ -136,19 +135,20 @@ isCommand( () => taskBook.get(command, 'fn')() )    // task_command.call()
 
 function handleErrors () {
     taskTogo.__ || error_quit(`fatal: Unknown command "${command}"`)
-    taskTogo.dget('options.dotsat')   && (site_path.__ || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
-    taskTogo.dget('options.arg0')     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
-    taskTogo.dget('options.test')     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
-    taskTogo.dget('options.settings') && require( site_settings )  }
+    taskTogo.at('options.dotsat')   && (site_path.__ || error_quit(`fatal: You must run it in .sat working directory or its subdirectory.`))
+    taskTogo.at('options.arg0')     && (arg0      || error_quit(`error: You need to specify app or package name for the third argument.`))
+    taskTogo.at('options.test')     && (fs.existsSync(test_path) || error_quit(`fatal: test path "${test_path}" does not exist. `))
+    taskTogo.at('options.settings') && require( site_settings )  }
 
 function main () {
 
 let v
 const getVersion = path => require(path.valueOf()).version
-const addVersion = s => (v = s.split('.'), v.map((a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString()).join('.'))
-const version = () => console.log( getVersion( path_info.get(argv._[0], 'path').path(package_json) ) )
+const addVersion = s => (v = s.split('.'), v.map( (a, i) => (i != v.length - 1) ? a : (parseInt(a) + 1).toString() ).join('.'))
+const version = () => path_info.get(argv._[0], 'path').path(package_json).invoke$(getVersion).log()
 const increaseVersion = (file, data) =>
     data.replace(new RegExp('"version":\\s*"' + (v = getVersion(file)) + '"'), '"version": "' + addVersion(v) + '"')
+
 const gitPush = (commit, paths) => {
     let p = paths.shift()
     spawn_command('git', 'add', ['.'], p).on(  'exit', code =>
@@ -156,13 +156,15 @@ const gitPush = (commit, paths) => {
             code ? paths.length ? gitPush( commit, paths ) : undefined
                  : spawn_command('git', 'push', [], p).on(  'exit', code =>
                    paths.length ? gitPush( commit, paths ) : undefined  )  )  )  }
+
 const editFile = (file, func, action) =>
     fs.readFile(  file.__, 'utf8', (e, data) => error(e) ||
         fs.writeFile( file.__, data = func(file, data), 'utf8', e => error(e) || ( action && action(file, data) ) )  )
 const npmPublish    = (path, after) => (spawn_command('npm', 'publish', ['.'], path)).on('exit', after ? after : () => {} )
 const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', after ? after : () => {} )
+
 const publish = paths => {
-    let v = paths.shift(), path = v.path.$
+    let v = paths.shift(), path = v.path.into$
     editFile(  path.path( v.meteor ? package_js : package_json ),
         (f, d) => increaseVersion( path.path(package_json), d ), (f, d) =>
         v.meteor ? meteorPublish(  path, () =>
@@ -171,39 +173,52 @@ const publish = paths => {
                       : paths.length ? publish(paths) : {}  )
                  : npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )  }
 const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--port', port || '3000', '--settings', deploy_settings]), path || site_path )
+
 const npmUpdate = npms => {
     if (!npms.length) return
     let v = npms.shift()
     spawn_command(    'npm', 'remove',  [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
         spawn_command('npm', 'install', [v.name, '--save', '--prefix', v.prefix], v.path )  ).on(  'exit', () =>
             npmUpdate(npms)  )  }
+
 const meteorUpdate = (npms, meteors) => {
     if (!meteors.length)
         return npms.length ? npmUpdate(npms) : undefined
     let v = meteors.shift()
     spawn_command(  'meteor', 'update', [v.name], v.path).on('exit',
         meteors.length ? () => meteorUpdate(npms, meteors) : () => npmUpdate(npms)  )  }
+
 const npmArray = arr => arr.reduce(  (  (a,v,i) =>
-    a.concat( v.npm.map( w => ({name:v.npmName || v.name, prefix:w, path:v.path }) ) )  ), []  )
+    a.concat( v.npm.map( w => ({name: v.npmName || v.name, prefix:w, path:v.path }) ) )  ), []  )
+
 const update = paths => {
     meteorUpdate(
         npmArray( paths.filter(v => v.npm) ),
         paths.filter(v => v.meteor).reduce( ((a,v,i) => a.concat( v.meteor.map( w => ({name:v.name, path:w}) ) )), [] )  )  }
+
 const npmInstall = npms => {
     if (!npms.length) return
     let v = npms.shift()
     spawn_command(     'npm', 'remove', [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
         spawn_command( 'npm', 'install',   ['.', '--save', '--prefix', v.prefix], v.path )  ).on(  'exit', () =>
             npmInstall(npms)  ) }
+
+const npmLink = npms => {
+    if (!npms.size()) return
+    let v = npms.shift().into$.values()[0]//.into$.log()
+    spawn_command(     'npm', 'remove', [v.npmLink, '--save'], v.path ).on(  'exit', () =>
+        spawn_command( 'npm', 'link',   [v.npmLink, '--save'], v.path )  ).on(  'exit', () => npmLink(npms)  ) }
+
 const jasmine = (a, fn) => {
     if (a.length === 0) return
     spawn_command( 'jasmine', a.shift() ).on(  'exit', code =>
         code === 0 ? a.length !== 0 ? jasmine(a, fn) : fn === undefined ? {} : fn() : {}  )  }
+
 const jasmineSpecs = key =>
     key ? [] :
         path_info.keys().map( k => path_info.get(k) ).filter( v => v.jasmine ).reduce(  (  (a,v) =>
-            a.concat(  fs.readdirSync( v.path.$.path('spec').__ ).filter( w => w.match(/[sS]pec\.js$/) )
-                .map( x => v.path.$.path('spec', x) )  )  ), []   )
+            a.concat(  fs.readdirSync( v.path.into$.path('spec').__ ).filter( w => w.match(/[sS]pec\.js$/) )
+                .map( x => v.path.into$.path('spec', x) )  )  ), []   )
 
 let ops = argv._
 new Task(  'env',  () =>
@@ -229,7 +244,7 @@ new Task(  'help', () =>
     { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
-    let p = inc.$(path_info.get(argv._[0], 'path'))
+    let p = in$.from(path_info.get(argv._[0], 'path'))
     editFile( p.path(package_js), (f, d) => increaseVersion( p.path(package_json).__, d), () =>
         editFile( p.path(package_json), increaseVersion, () => version() )) },
     { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
@@ -258,6 +273,9 @@ new Task(  'npm-install', () =>
                : npmInstall( npmArray( filter('npm').map( k => path_info.get(k) ) ) ),
     { dotsat: 1, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
 
+new Task(  'npm-link', () => paths.filter(v => v.npmLink).carry(npmLink),
+    { dotsat: 0, test: 0, description: 'Link local npm modules.' }  )
+
 const testArray = a => a.map(v => ({name: v.name, prefix: test_path, path: v.path}))
 new Task(  'npm-test-install', () =>
     ops.length ? npmInstall( testArray( pathInfos(ops) ) )
@@ -266,11 +284,11 @@ new Task(  'npm-test-install', () =>
 
 new Task(  'script', () => {
     fs.readFile(  home.path(dot_env).valueOf(), 'utf8', (e, data) => error(e) ||
-        data.replace(/^\s*([a-zA-Z])/mg, "export $1").$.log() )
+        data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log() )
     path_info.keys().filter( (v,i,a) => path_info.get(v, 'cd') ).forEach( v =>
             console.log( `alias cd-${v}='cd`, path_info.get(v, 'path') + "'" )  )
     global_settings.require$().stringify$().log(v => `export GLOBAL_SETTINGS='${v}'`)  },
-    { dotsat: 0, test: 0, description: 'Print export .env $. <(sat exports)' }  )
+    { dotsat: 0, test: 0, description: 'Print export .env $. <(sat script)' }  )
 
 new Task(  'git-push', () =>
     gitPush( arg0, filter('git').map( k => path_info.get(k, 'path') ) ),
@@ -303,7 +321,7 @@ new Task(  'publish', () => {
 
 new Task(  'api-url', () => {
     __._Settings = Settings.__
-    inc.meteor.queryString(__._Settings.google.maps.options).$.log() },
+    in$.meteor.queryString(__._Settings.google.maps.options).into$.log() },
     {dotsat: 0, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'settings', () => Settings.log(),
@@ -312,15 +330,15 @@ new Task(  'settings', () => Settings.log(),
 let settings_json =
 new Task(  'settings.json', () =>
     fs.readFile(site_settings, 'utf-8', (e, data) =>
-        inc.object({
+        in$.object({
             public: JSON.parse(process.env.GLOBAL_SETTINGS).public
-          , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg).$
-                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), inc.object() ).__
-        }  }).stringify$(null, 4).pipe( v => fs.writeFile(deploy_settings, v.__, () => {}))  )
+          , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg).into$
+                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$.object() ).__
+        }  }).stringify$(null, 4).log()/*.carry( v => fs.writeFile(deploy_settings, v.__, () => {})) */  )
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'global-settings', () =>
-    process.env.GLOBAL_SETTINGS.$.parseJson$().log()
+    process.env.GLOBAL_SETTINGS.into$.parseJson$().log()
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'deploy', () =>
@@ -334,28 +352,29 @@ new Task(  'geo', () =>
 
 //meteor deploy --settings settings.json map.meteorapp.com
 //meteor deploy --settings settings.json map.meteorapp.com
-tasks = inc.$({
+tasks = in$.from({
     create:     { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
     deploy:     { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
     mobileConfig:  { call: () => mobile_config(),    dotsat: 0, test: 1, description: 'Create mobile-config.js' },
     createTest:    { call: () => create_test(),      dotsat: 0, test: 1, description: 'Create test directory.' },
     installMobile: { call: () => install_mobile(),   dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' }  })
 
-options = inc.$({})
+options = in$.from({})
 
-path_info = inc.$({
+path_info = in$.from({
     home:      { type: "user",    name: "home",              path: home },
     cubesat:   { type: "user",    name: "cubesat",           path: cubesat_path, cd:1 },
     module:    { type: "user",    name: "module",            path: node_modules, cd:1 },
     settings:  { type: "user",    name: "settings",          path: global_settings },
     ws:        { type: "user",    name: "workspace",         path: workspace,         cd:1 },
     site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:0 },
-    test:      { type: "site",    name: "test",              path: test_path,         cd:1 },
+    test:      { type: "site",    name: "test",              path: test_path,         cd:1, npmLink: 'incredibles' },
     cs:        { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat"),     cd:1,
-                 npm:[node_modules], meteor:[site_path],     npmName: 'cubesat' },
+                 npm:[node_modules], meteor:[site_path],     npmName: 'cubesat', npmLink: 'incredibles' },
     jq:        { type: "package", name: "isaac:jquery-x",    git: 1, path: packages_path.path("isaac:jquery-x"),    cd:1 },
     sq:        { type: "package", name: "isaac:style-query", git: 1, path: packages_path.path("isaac:style-query"), cd:1 },
     in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles"), cd:1,
                  npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1, npmTest: 1 },
     u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2"), cd:1,
-                 npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })  }
+                 npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })
+paths = path_info  }

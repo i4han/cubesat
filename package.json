@@ -1,30 +1,33 @@
 {
-    "name": "cubesat",
-    "version": "0.6.75",
-    "os" : [ "!win32" ],
-    "description": "sat: cubesat utility and library",
-    "main": "src/cubesat.js",
-    "files": [
-        "src/cubesat.js",
-        "src/sat.js"
-    ],
-    "bin": { "sat": "./src/sat.js" },
-    "__scripts": {
-        "prepublish": "coffee -bc -o js coffee && ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "Isaac Han <isaac@hi16.ca>",
-    "contributors": [
-        "Stu Pae <stu.pae@gmail.com>"
-    ],
-    "dependencies": {
-        "dotenv": "*",
-        "incredibles": "*",
-        "underscore2": "*"
-    },
-    "repository": {
-        "type": "git",
-        "url":  "https://github.com/i4han/cubesat.git"
-    },
-    "license":  "GPL-2.0"
+  "name": "cubesat",
+  "version": "0.6.76",
+  "os": [
+    "!win32"
+  ],
+  "description": "sat: cubesat utility and library",
+  "main": "src/cubesat.js",
+  "files": [
+    "src/cubesat.js",
+    "src/sat.js"
+  ],
+  "bin": {
+    "sat": "./src/sat.js"
+  },
+  "__scripts": {
+    "prepublish": "coffee -bc -o js coffee && ed -s js/sat.js <<< $'1i\n#!/usr/bin/env node\n.\nwq'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Isaac Han <isaac@hi16.ca>",
+  "contributors": [
+    "Stu Pae <stu.pae@gmail.com>"
+  ],
+  "dependencies": {
+    "dotenv": "*",
+    "underscore2": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/i4han/cubesat.git"
+  },
+  "license": "GPL-2.0"
 }
