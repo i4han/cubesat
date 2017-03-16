@@ -28,19 +28,19 @@ findDir = d => process.cwd().split('/').concat('').into$
     .if( v => v.typeof('array') ).then( v => v.join('/').into$ )
     .else( ''.into$ ).result
 
-const home          = process.env.HOME.into$.unchain()
+const home          = process.env.HOME.into$.loose()
 home.path(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
-const site_path     = findDir( '.sat' ).unchain()
+const site_path     = findDir( '.sat' ).loose()
 const dot_sat_path  = site_path.path( '.sat' )
 const mobile_config = site_path.path( 'mobile-config.js' )
 const dot_cubesat   = '.cubesat'
-const cubesat_path  = findDir(dot_cubesat).if( v => v.is('') ).then(home).else(v => v).result.path(dot_cubesat).unchain()
+const cubesat_path  = findDir(dot_cubesat).if( v => v.is('') ).then(home).else(v => v).result.path(dot_cubesat).loose()
 const site_settings = site_path.path( 'lib', 'settings.js' ).value
 const deploy_settings = site_path.path( '.settings.json' ).value
 const global_settings = cubesat_path.path( 'settings.js' )
-const workspace     = process.env.WORKSPACE.into$.unchain() || home.path('workspace').unchain()
-const test_path     = workspace.path( 'test' ).unchain()
-const packages_path = test_path.path( packages_dir ).unchain()
+const workspace     = process.env.WORKSPACE.into$.loose() || home.path('workspace').loose()
+const test_path     = workspace.path( 'test' ).loose()
+const packages_path = test_path.path( packages_dir ).loose()
 const node_modules  = process.env.NODE_MODULES.into$ || findDir( 'node_modules' ) || home // NODE_MODULES is not standard. but
 const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
@@ -75,12 +75,12 @@ const error_quit = e =>  console.error(e) || process.exit(1)
 
 isCommand( handleErrors )
 
-const cd = d => process.chdir(d.valueOf())
+const cd = d => process.chdir(d)
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 const spawn_command = (bin, command, args, path) => {
-    [' ', bin, command].concat(args).join(' ').into$.log()
-    path && ( cd(path) || console.log(' ', path) )
+    ;[' ', bin, command].concat(args).join(' ').into$.log()
+    ;(path = in$.strip(path)) && ( cd(path) || console.log(' ', path) )
     return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
 /*
@@ -152,15 +152,15 @@ path_info = in$.from({
     site:      { type: "site",    name: "site",              git: 1, path: site_path, cd:0 },
     test:      { type: "site",    name: "test",              path: test_path,         cd:1, npmLink: 'incredibles' },
     package:   { type: "package", name: "packages",          path: ''},
-    cs:        { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat").unchain(),     cd:1,
+    cs:        { type: "package", name: "isaac:cubesat",     git: 1, path: packages_path.path("isaac:cubesat").loose(),     cd:1,
                  npm:[node_modules], meteor:[site_path],     npmName: 'cubesat', npmLink: 'incredibles', npmEnv:1 },
-    jq:        { type: "package", name: "isaac:jquery-x",    git: 0, path: packages_path.path("isaac:jquery-x").unchain(),    cd:1 },
-    sq:        { type: "package", name: "isaac:style-query", git: 0, path: packages_path.path("isaac:style-query").unchain(), cd:1 },
-    in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles").unchain(), cd:1,
+    jq:        { type: "package", name: "isaac:jquery-x",    git: 0, path: packages_path.path("isaac:jquery-x").loose(),    cd:1 },
+    sq:        { type: "package", name: "isaac:style-query", git: 0, path: packages_path.path("isaac:style-query").loose(), cd:1 },
+    in:        { type: "package", name: "isaac:incredibles", git: 1, path: packages_path.path("isaac:incredibles").loose(), cd:1,
                  npm:[node_modules, site_path, test_path],   npmName: 'incredibles', jasmine:1, npmTest: 1, npmEnv:1 },
-    u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2").unchain(), cd:1,
+    u2:        { type: "package", name: "isaac:underscore2", git: 1, path: packages_path.path("isaac:underscore2").loose(), cd:1,
                  npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })
-paths = path_info.unchain()
+paths = path_info.loose()
 // ipath = {}
 // paths.forEach((v,k)=>v.name === k ? )
 let v, param = argv._[0]
@@ -187,7 +187,7 @@ const npmPublish    = (path, after) => (spawn_command('npm', 'publish', ['.'], p
 const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', after ? after : () => {} )
 
 const publish = paths => {
-    let v = paths.shift(), path = v.path.into$.unchain()
+    let v = paths.shift(), path = v.path.into$.loose()
     editFile(  path.path( v.meteor ? package_js : package_json ),
         (f, d) => increaseVersion( path.path(package_json), d ), (f, d) =>
         v.meteor ? meteorPublish(  path, () =>
@@ -237,11 +237,6 @@ const jasmine = (a, fn) => {
     spawn_command( 'jasmine', a.shift() ).on(  'exit', code =>
         code === 0 ? a.length !== 0 ? jasmine(a, fn) : fn === undefined ? {} : fn() : {}  )  }
 
-const jasmineSpecs__ = key =>
-    key ? [] :
-        path_info.keys().map( k => path_info.get(k) ).filter( v => v.jasmine ).reduce(  (  (a,v) =>
-            a.concat(  fs.readdirSync( v.path.into$.path('spec').value ).filter( w => w.match(/[sS]pec\.js$/) )
-                .map( x => v.path.into$.path('spec', x) )  )  ), []   )
 const jasmineSpecs = key =>
     key ? [] :
         paths.filter(v=>v.jasmine).map( (v,k)=>v.path ).reduce(  (  (a,v) =>
@@ -270,7 +265,7 @@ new Task(  'help', () =>
     { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
-    let p = paths.take(argv._[0], 'path').unchain()
+    let p = paths.take(argv._[0], 'path').loose()
     editFile( p.path(package_js), (f, d) => increaseVersion( p.path(package_json).value, d), () =>
         editFile( p.path(package_json), increaseVersion, version)) },
     { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
@@ -355,21 +350,21 @@ new Task(  'publish', () => {
     { dotsat: 0, test: 0, description: 'Publish Meteor packages.' })
 
 new Task(  'api-url', () => {
-    __._Settings = Settings.value
+    __._Settings = Settings.log().value
     in$.meteor.queryString(__._Settings.google.maps.options).into$.log() },
     {dotsat: 0, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'settings', () => Settings.log(),
     {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
-let settings_json =
+// let settings_json =
 new Task(  'settings.json', () =>
-    fs.readFile(  site_settings, 'utf-8', (e, data) =>
+    fs.readFile(  site_settings, 'utf-8', (e, data) =>  // search for process.env.ENVIRONMENT_VARIABLES
         in$.object({
             public: JSON.parse(process.env.GLOBAL_SETTINGS).public
-          , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg).into$
-                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$.object() ).value
-        }  }).stringify$(null, 4).log() /*.carry( v => fs.writeFile(deploy_settings, v.value, () => {})) */  )
+          , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg)
+                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$.object({}) ).value  }
+        }).chain(JSON.stringify, null, 4).log() )
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'global-settings', () =>
