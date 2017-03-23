@@ -30,6 +30,7 @@ findDir = d => process.cwd().split('/').concat('').into$
 
 const home          = process.env.HOME.into$.loose()
 home.pj(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
+// home.pj(dot_env).if(fs.existsSync).then(v => ({path:v}), dotenv.config)
 const site_path     = findDir( '.sat' ).loose()
 const dot_sat_path  = site_path.pj( '.sat' )
 const mobile_config = site_path.pj( 'mobile-config.js' )
