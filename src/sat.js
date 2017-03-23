@@ -22,7 +22,7 @@ require.main !== module && ( () => {
         .pipe( valve("gulp-markdox") )
         .pipe( gulp.dest(paths.doc) ) })  })()
 
-in$.method('pj', path.join)
+in$.method({pj: path.join})
 
 findDir = d => process.cwd().split('/').concat('').into$
     .map( (v,i,a) => a.slice(0, -i-1).join('/') )
@@ -57,8 +57,7 @@ class Task {
 
 let Settings = ({}).into$, prop
 __.Settings = obj => obj.into$
-    .if_type('function')
-    // .if(in$.typeof, 'function')
+    .if({type:'function'})
     .then( v=> prop = ({}).into$.assign( Settings, obj({}) ).value )
     .then( v=> Settings.assign( obj(prop).into$.invokeProperties(prop) ) )
     .else_if_type('object')
