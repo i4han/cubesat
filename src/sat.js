@@ -28,20 +28,20 @@ findDir = d => process.cwd().split('/').concat('').into$
     .map( (v,i,a) => a.slice(0, -i-1).join('/') )
     .find( v => v.into$.pj(d).chain(fs.existsSync).value ).into$
 
-const home          = process.env.HOME.into$.loose()
+const home          = process.env.HOME.into$.cut()
 home.pj(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
 // home.pj(dot_env).if(fs.existsSync).then(v => ({path:v}), dotenv.config)
-const site_path     = findDir( '.sat' ).loose()
+const site_path     = findDir( '.sat' ).cut()
 const dot_sat_path  = site_path.pj( '.sat' )
 const mobile_config = site_path.pj( 'mobile-config.js' )
 const dot_cubesat   = '.cubesat'
-const cubesat_path  = findDir(dot_cubesat).if( v => v.is('') ).then(home).else(v => v).result.pj(dot_cubesat).loose()
+const cubesat_path  = findDir(dot_cubesat).if('').then(home).else(v => v).result.pj(dot_cubesat).cut()
 const site_settings = site_path.pj( 'lib', 'settings.js' ).value
 const deploy_settings = site_path.pj( '.settings.json' ).value
 const global_settings = cubesat_path.pj( 'settings.js' )
-const workspace     = process.env.WORKSPACE.into$.loose() || home.pj('workspace').loose()
-const test_path     = workspace.pj( 'test' ).loose()
-const packages_path = test_path.pj( packages_dir ).loose()
+const workspace     = process.env.WORKSPACE.into$.cut() || home.pj('workspace').cut()
+const test_path     = workspace.pj( 'test' ).cut()
+const packages_path = test_path.pj( packages_dir ).cut()
 const node_modules  = process.env.NODE_MODULES.into$ || findDir( 'node_modules' ) || home // NODE_MODULES is not standard. but
 const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
@@ -55,13 +55,13 @@ class Task {
         this.options = options || {}
         taskBook.set(name, this) }  }
 
-let Settings = ({}).into$, prop
-__.Settings = obj => obj.into$
-    .if({type:'function'})
-    .then( v=> prop = ({}).into$.assign( Settings, obj({}) ).value )
-    .then( v=> Settings.assign( obj(prop).into$.invokeProperties(prop) ) )
-    .else_if_type('object')
-    .then( v=> Settings.assign(v.invokeProperties( ({}).into$.assign(Settings, v.value) )) )
+let Settings = in$.from({}), prop
+__.Settings = obj => in$.from(obj)
+    .if({type: 'function'})
+    .then( v=> prop = in$.from({}).assign( Settings, obj({}) ).value )
+    .then( v=> Settings.assign( in$.from(obj(prop)).invokeProperties(prop) ) )
+    .else_if({type: 'object'})
+    .then( v=> Settings.assign(v.invokeProperties( in$.from({}).assign(Settings, v.value) )) )
 
 const isCommand = f => require.main === module && f()
 
@@ -160,11 +160,11 @@ paths = in$.from({
                , npm:[node_modules,  site_path, test_path],  npmName: 'incredibles', jasmine:1, npmTest: 1, npmEnv:1 }
   , u2:        { type: "package", name: "isaac:underscore2", git: 1,  cd:1
                , npm:[node_modules], meteor:[site_path],     npmName: 'underscore2', jasmine:1 }  })
-.forEach( v=> v.path || (v.path = packages_path.pj(v.name).loose()) )
+.forEach( v=> v.path || (v.path = packages_path.pj(v.name).cut()) )
 
 let v, param = argv._[0]
 
-const getVersion = p => p.into$.chain(require).value.version
+const getVersion = p => in$.from(p).chain(require).value.version
 const version = () => paths.pick(param, 'path').pj('package.json').chain(getVersion).value
 const addVersion = s => s.split('.').map( (v,i,a)=>(i != a.length - 1) ? v : (parseInt(v) + 1).toString() ).join('.')
 const increaseVersion = (file, data) =>
@@ -185,7 +185,7 @@ const npmPublish    = (path, after) => (spawn_command('npm', 'publish', ['.'], p
 const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], path)).on('exit', after ? after : () => {} )
 
 const publish = paths => {
-    let v = paths.shift(), path = v.path.loose()
+    let v = paths.shift(), path = v.path.cut()
     editFile(  path.pj( v.meteor ? package_js : package_json ),
         (f, d) => increaseVersion( path.pj(package_json), d ), (f, d) =>
         v.meteor ? meteorPublish(  path, () =>
@@ -255,7 +255,7 @@ new Task(  'help', () =>
   , { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
-    let p = paths.pick(param, 'path').loose()
+    let p = paths.pick(param, 'path').cut()
     editFile( p.pj(package_js), (f, d) => increaseVersion( p.pj(package_json).value, d), () =>
         editFile( p.pj(package_json), increaseVersion, version)) }
   , { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
@@ -306,7 +306,7 @@ new Task(  'script', () => {
     alias()
     fs.readFile(  home.pj(dot_env).value, 'utf8', (e, data) => error(e) ||
         data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log() )
-    global_settings.chainLinked(require, JSON.stringify).log(v => `export GLOBAL_SETTINGS='${v.value}'`)
+    global_settings.chain(require, JSON.stringify).log(v => `export GLOBAL_SETTINGS='${v.value}'`)
     paths.filter( v=>v.npmEnv).forEach( v=> (`export ${v.npmName.toUpperCase()}_PATH=` + v.path.value).into$.log() ) }
   , { dotsat: 0, test: 0, description: 'Print export .env $. <(sat script)' }  )
 
@@ -351,7 +351,7 @@ new Task(  'settings.json', () =>
             public: JSON.parse(process.env.GLOBAL_SETTINGS).public
           , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg)
                 .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$.from({}) ).value  }
-        }).chain(JSON.stringify, null, 4).log() )
+        }).chain([JSON.stringify, null, 4]).log() )
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'global-settings', () =>
