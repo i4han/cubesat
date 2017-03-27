@@ -24,25 +24,25 @@ require.main !== module && ( () => {
 
 in$.method({pj: path.join})
 
-findDir = d => process.cwd().split('/').concat('').into$
+let findDir = d => process.cwd().split('/').concat('')
     .map( (v,i,a) => a.slice(0, -i-1).join('/') )
-    .find( v => v.into$.pj(d).chain(fs.existsSync).value ).into$
+    .find( v => in$(v).pj(d).chain(fs.existsSync).value ).into$
 
-const home          = process.env.HOME.into$.cut()
+const home          = in$(process.env.HOME).cut()
 home.pj(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
 // home.pj(dot_env).if(fs.existsSync).then(v => ({path:v}), dotenv.config)
-const site_path     = findDir( '.sat' ).cut()
-const dot_sat_path  = site_path.pj( '.sat' )
-const mobile_config = site_path.pj( 'mobile-config.js' )
+const site_path     = findDir('.sat').cut()
+const dot_sat_path  = site_path.pj('.sat')
+const mobile_config = site_path.pj('mobile-config.js')
 const dot_cubesat   = '.cubesat'
-const cubesat_path  = findDir(dot_cubesat).if('').then(home).else(v => v).result.pj(dot_cubesat).cut()
-const site_settings = site_path.pj( 'lib', 'settings.js' ).value
-const deploy_settings = site_path.pj( '.settings.json' ).value
-const global_settings = cubesat_path.pj( 'settings.js' )
-const workspace     = process.env.WORKSPACE.into$.cut() || home.pj('workspace').cut()
-const test_path     = workspace.pj( 'test' ).cut()
-const packages_path = test_path.pj( packages_dir ).cut()
-const node_modules  = process.env.NODE_MODULES.into$ || findDir( 'node_modules' ) || home // NODE_MODULES is not standard. but
+const cubesat_path  = findDir(dot_cubesat).if('').then(home).else(v=>v).result.pj(dot_cubesat).cut()
+const site_settings = site_path.pj('lib', 'settings.js').value
+const deploy_settings = site_path.pj('.settings.json').value
+const global_settings = cubesat_path.pj('settings.js').cut()
+const workspace     = in$(process.env.WORKSPACE).cut() || home.pj('workspace').cut()
+const test_path     = workspace.pj('test').cut()
+const packages_path = test_path.pj(packages_dir).cut()
+const node_modules  = in$(process.env.NODE_MODULES) || findDir('node_modules') || home // NODE_MODULES is not standard. but
 const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
 let taskBook = in$.from({})
@@ -57,18 +57,18 @@ class Task {
 
 let Settings = in$.from({}), prop
 __.Settings = obj => in$.from(obj)
-    .if({type: 'function'})
-    .then( v=> prop = in$.from({}).assign( Settings, obj({}) ).value )
-    .then( v=> Settings.assign( in$.from(obj(prop)).invokeProperties(prop) ) )
-    .else_if({type: 'object'})
-    .then( v=> Settings.assign(v.invokeProperties( in$.from({}).assign(Settings, v.value) )) )
+    .typeof('function')
+    .then( v=> prop = in$({}).assign( Settings, obj({}) ).value )
+    .then( v=> Settings.assign( in$(obj(prop)).invokeProperties(prop) ) )
+    .typeof('object')
+    .then( v=> Settings.assign(v.invokeProperties( in$({}).assign(Settings, v.value) )) )
 
 const isCommand = f => require.main === module && f()
 
 isCommand( main )
 let command = process.argv[2] || 'help'
 // console.log(command, taskBook.val, 0, taskBook.get('help').get('fn'))
-const taskTogo = taskBook.get(command).into$
+const taskTogo = in$(taskBook.get(command))
 const arg0 = argv._[0]
 const error = e => e && (console.error(e) || true)
 const error_quit = e =>  console.error(e) || process.exit(1)
@@ -79,7 +79,7 @@ const cd = d => process.chdir(d)
 const mkdir = (dir, path, f) => cd(path) && fs.mkdir(dir, e => e || f(dir, path))
 const cp = (s, t) => fs.createReadStream(s).pipe(fs.createWriteStream(t))
 const spawn_command = (bin, command, args, path) => {
-    in$.from([' ', bin, command]).append(args).join(' ').log()
+    in$([' ', bin, command]).append(args).join(' ').log()
     ;(path = in$.strip(path)) && ( cd(path) || console.log(' ', path) )
     return spawn(bin, [command].concat(args), {stdio: 'inherit'}) }
 
@@ -143,7 +143,7 @@ function handleErrors () {
 
 function main () {
 
-paths = in$.from({
+paths = in$({
     home:      { type: "user",    name: "home",      path: home }
   , cubesat:   { type: "user",    name: "cubesat",   path: cubesat_path,      cd:1 }
   , module:    { type: "user",    name: "module",    path: node_modules,      cd:1 }
@@ -164,7 +164,7 @@ paths = in$.from({
 
 let v, param = argv._[0]
 
-const getVersion = p => in$.from(p).chain(require).value.version
+const getVersion = p => in$(p).chain(require).value.version
 const version = () => paths.pick(param, 'path').pj('package.json').chain(getVersion).value
 const addVersion = s => s.split('.').map( (v,i,a)=>(i != a.length - 1) ? v : (parseInt(v) + 1).toString() ).join('.')
 const increaseVersion = (file, data) =>
@@ -211,7 +211,7 @@ const meteorUpdate = (npms, meteors) => {
         meteors.length ? () => meteorUpdate(npms, meteors) : () => npmUpdate(npms)  )  }
 
 const npmList = arr => arr.reduce(  (a,v) =>
-    a.append( v.npm.map( w => ({name: v.npmName || v.name, prefix:w.value, path:v.path.value }) ) ), [].into$  )
+    a.append( v.npm.map( w => ({name: v.npmName || v.name, prefix:w.value, path:v.path.value }) ) ), in$([])  )
 
 const update = paths => meteorUpdate(
     select('npm').carry(npmList),
@@ -220,7 +220,7 @@ const update = paths => meteorUpdate(
 
 const npmLink = npms => {
     if (!npms.size()) return
-    let v = npms.shift().into$.values()[0] //.into$.log()
+    let v = in$(npms.shift()).values()[0] //.into$.log()
     spawn_command(     'npm', 'remove', [v.npmLink, '--save'], v.path ).on(  'exit', () =>
         spawn_command( 'npm', 'link',   [v.npmLink, '--save'], v.path )  ).on(  'exit', () => npmLink(npms)  ) }
 
@@ -296,7 +296,7 @@ new Task(  'npm-test-install', () =>
   , { dotsat: 0, test: 0, description: 'Install local npm modules for test site.', thirdCommand: 1 }  )
 
 const alias = () => {
-    fs.readFile(  home.pj('.alias').value, 'utf8', (e, data) => error(e) || data.into$.log() )
+    fs.readFile(  home.pj('.alias').value, 'utf8', (e, data) => error(e) || in$(data).log() )
     paths.filter( v=>v.cd ).forEach( (v,k)=> `alias cd-${k}='cd ${v.path.value}'`.into$.log() )  }
 
 new Task(  'alias', alias,
@@ -304,8 +304,8 @@ new Task(  'alias', alias,
 
 new Task(  'script', () => {
     alias()
-    fs.readFile(  home.pj(dot_env).value, 'utf8', (e, data) => error(e) ||
-        data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log() )
+    home.pj(dot_env).chain([fs.readFile, 'utf8', (e, data) => error(e) ||
+        data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log()])
     global_settings.chain(require, JSON.stringify).log(v => `export GLOBAL_SETTINGS='${v.value}'`)
     paths.filter( v=>v.npmEnv).forEach( v=> (`export ${v.npmName.toUpperCase()}_PATH=` + v.path.value).into$.log() ) }
   , { dotsat: 0, test: 0, description: 'Print export .env $. <(sat script)' }  )
@@ -347,15 +347,15 @@ new Task(  'settings', () => Settings.log()
 
 new Task(  'settings.json', () =>
     fs.readFile(  site_settings, 'utf-8', (e, data) =>  // search for process.env.ENVIRONMENT_VARIABLES
-        in$.from({
+        in$({
             public: JSON.parse(process.env.GLOBAL_SETTINGS).public
           , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg)
-                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$.from({}) ).value  }
+                .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$({}) ).value  }
         }).chain([JSON.stringify, null, 4]).log() )
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'global-settings', () =>
-    process.env.GLOBAL_SETTINGS.into$.chain(JSON.parse).log()
+    in$(process.env.GLOBAL_SETTINGS).chain(JSON.parse).log()
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'deploy', () =>
@@ -369,13 +369,12 @@ new Task(  'geo', () =>
 
 //meteor deploy --settings settings.json map.meteorapp.com
 //meteor deploy --settings settings.json map.meteorapp.com
-tasks = in$.from({
+tasks = in$({
     create:     { call: () => create(),     dotsat: 0, test: 0, description: 'Create a project.' },
     deploy:     { call: () => deploy(),     dotsat: 1, test: 0, description: 'Deploy to meteor.com.' },
     mobileConfig:  { call: () => mobile_config(),    dotsat: 0, test: 1, description: 'Create mobile-config.js' },
     createTest:    { call: () => create_test(),      dotsat: 0, test: 1, description: 'Create test directory.' },
     installMobile: { call: () => install_mobile(),   dotsat: 0, test: 1, description: 'Install mobile sdk and platform.' }  })
 
-options = in$.from({})
-
+options = in$({})
 }
