@@ -30,10 +30,9 @@ let findDir = d => process.cwd().split('/').concat('')
 
 const home          = in$(process.env.HOME).cut()
 home.pj(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
-// home.pj(dot_env).if(fs.existsSync).then(v => ({path:v}), dotenv.config)
 const site_path     = findDir('.sat').cut()
-const dot_sat_path  = site_path.pj('.sat')
-const mobile_config = site_path.pj('mobile-config.js')
+// const dot_sat_path  = site_path.pj('.sat')
+// const mobile_config = site_path.pj('mobile-config.js')
 const dot_cubesat   = '.cubesat'
 const cubesat_path  = findDir(dot_cubesat).if('').then(home).else(v=>v).result.pj(dot_cubesat).cut()
 const site_settings = site_path.pj('lib', 'settings.js').value
@@ -45,7 +44,7 @@ const packages_path = test_path.pj(packages_dir).cut()
 const node_modules  = in$(process.env.NODE_MODULES) || findDir('node_modules') || home // NODE_MODULES is not standard. but
 const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
 
-let taskBook = in$.from({})
+let taskBook = in$({})
 let tasks, options
 
 class Task {
@@ -55,13 +54,13 @@ class Task {
         this.options = options || {}
         taskBook.set(name, this) }  }
 
-let Settings = in$.from({}), prop
-__.Settings = obj => in$.from(obj)
-    .typeof('function')
-    .then( v=> prop = in$({}).assign( Settings, obj({}) ).value )
-    .then( v=> Settings.assign( in$(obj(prop)).invokeProperties(prop) ) )
-    .typeof('object')
-    .then( v=> Settings.assign(v.invokeProperties( in$({}).assign(Settings, v.value) )) )
+let Settings = in$({}), prop
+__.Settings = obj => in$(obj).typeof()
+    .case('function')
+    .then( v=>prop = in$({}).assign( Settings, obj({}) ).value )
+    .then( v=>Settings.assign( in$(obj(prop)).invokeProperties(prop) ) )
+    .case('object')
+    .then( v=> Settings.assign( v.invokeProperties( in$({}).assign(Settings, v.value) )) )
 
 const isCommand = f => require.main === module && f()
 
@@ -132,7 +131,7 @@ install_mobile = () => {
     () => console.log(new Date()) ))()  }
 
 // console.log(0, taskBook.val, 1, taskBook.get(command).val, 2, taskBook.get(command, 'fn'))
-isCommand( () => taskBook.get(command, 'fn')() )    // task_command.call()
+isCommand( taskBook.get(command, 'fn') )    // task_command.call()
 
 function handleErrors () {
     taskTogo.value || error_quit(`fatal: Unknown command "${command}"`)
@@ -165,7 +164,7 @@ paths = in$({
 let v, param = argv._[0]
 
 const getVersion = p => in$(p).chain(require).value.version
-const version = () => paths.pick(param, 'path').pj('package.json').chain(getVersion).value
+const version = () => paths.pickAt(param, 'path').pj('package.json').chain(getVersion).value
 const addVersion = s => s.split('.').map( (v,i,a)=>(i != a.length - 1) ? v : (parseInt(v) + 1).toString() ).join('.')
 const increaseVersion = (file, data) =>
     data.replace(new RegExp('"version":\\s*"' + (v = getVersion(file)) + '"'), '"version": "' + addVersion(v) + '"')
@@ -196,9 +195,10 @@ const publish = paths => {
 const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.concat(['--port', port || '3000', '--settings', deploy_settings]), path || site_path )
 
 const npmUpdate = (npms, install) => {
-    if (!npms.length) return
-    let v = npms.shift()
+    if (!npms.size()) return
+    let v = npms.shift().result
     let name = install ? '.' : v.name
+    console.log(v.name, install, v.prefix)
     spawn_command(    'npm', 'remove',  [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
         spawn_command('npm', 'install', [name,   '--save', '--prefix', v.prefix], v.path )  ).on(  'exit', () =>
             npmUpdate(npms, install)  )  }
@@ -255,7 +255,7 @@ new Task(  'help', () =>
   , { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
-    let p = paths.pick(param, 'path').cut()
+    let p = paths.pickAt(param, 'path').cut()
     editFile( p.pj(package_js), (f, d) => increaseVersion( p.pj(package_json).value, d), () =>
         editFile( p.pj(package_json), increaseVersion, version)) }
   , { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
@@ -281,7 +281,7 @@ new Task(  'npm-update', () =>
   , { dotsat: 1, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
 
 new Task(  'npm-install', () =>
-    param ? [paths.pick(param)].into$.carry(npmList).carry(npmUpdate) :
+    param ? [paths.pickAt(param)].into$.carry(npmList).carry(npmUpdate) :
         select('npm').carry(npmList).carry(npmUpdate)
   , { dotsat: 1, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
 
