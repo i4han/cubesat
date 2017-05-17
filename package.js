@@ -1,7 +1,7 @@
 
 Package.describe({
     summary: 'Cubesat: framework for Meteor.',
-    "version": "0.6.81",
+    "version": "0.6.86",
     git: 'https://github.com/i4han/cubesat.git',
     documentation: 'README.md'
 });

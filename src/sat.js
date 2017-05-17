@@ -20,16 +20,16 @@ require.main !== module && ( () => {
     gulp.task( 'doc', () => {
         gulp.src(paths.src)
         .pipe( valve("gulp-markdox") )
-        .pipe( gulp.dest(paths.doc) ) })  })()
+        .pipe( gulp.dest(paths.doc) ) }) })()
 
 in$.method({pj: path.join})
 
 let findDir = d => process.cwd().split('/').concat('')
     .map( (v,i,a) => a.slice(0, -i-1).join('/') )
-    .find( v => in$(v).pj(d).chain(fs.existsSync).value ).into$
+    .find( v => in$(v).pj(d).chain(fs.existsSync).value ).into$ // must be in site path
 
 const home          = in$(process.env.HOME).cut()
-home.pj(dot_env).if( v => fs.existsSync(v.value) ).then( v => dotenv.config( {path: v.value} ) )
+home.pj(dot_env).if(fs.existsSync).then( v => dotenv.config( {path: v.value} ) )
 const site_path     = findDir('.sat').cut()
 // const dot_sat_path  = site_path.pj('.sat')
 // const mobile_config = site_path.pj('mobile-config.js')
@@ -55,7 +55,7 @@ class Task {
         taskBook.set(name, this) }  }
 
 let Settings = in$({}), prop
-__.Settings = obj => in$(obj).typeof()
+__.Settings = obj => in$(obj).type()
     .case('function')
     .then( v=>prop = in$({}).assign( Settings, obj({}) ).value )
     .then( v=>Settings.assign( in$(obj(prop)).invokeProperties(prop) ) )
@@ -198,7 +198,6 @@ const npmUpdate = (npms, install) => {
     if (!npms.size()) return
     let v = npms.shift().result
     let name = install ? '.' : v.name
-    console.log(v.name, install, v.prefix)
     spawn_command(    'npm', 'remove',  [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
         spawn_command('npm', 'install', [name,   '--save', '--prefix', v.prefix], v.path )  ).on(  'exit', () =>
             npmUpdate(npms, install)  )  }
@@ -214,13 +213,13 @@ const npmList = arr => arr.reduce(  (a,v) =>
     a.append( v.npm.map( w => ({name: v.npmName || v.name, prefix:w.value, path:v.path.value }) ) ), in$([])  )
 
 const update = paths => meteorUpdate(
-    select('npm').carry(npmList),
+    select('npm').over(npmList),
     paths.filter(v => v.meteor)
         .reduce( ((a,v,i) => a.concat( v.meteor.map( w => ({name:v.name, path:w}) ) )), [] )  )
 
 const npmLink = npms => {
-    if (!npms.size()) return
-    let v = in$(npms.shift()).values()[0] //.into$.log()
+    if (!npms.object.size()) return
+    let v = in$(npms.object.shift()).values()[0]
     spawn_command(     'npm', 'remove', [v.npmLink, '--save'], v.path ).on(  'exit', () =>
         spawn_command( 'npm', 'link',   [v.npmLink, '--save'], v.path )  ).on(  'exit', () => npmLink(npms)  ) }
 
@@ -243,7 +242,7 @@ new Task(  'env',  () =>
   , { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
 
 new Task(  'paths', () =>
-    paths.map( (v, k) => ['  ', k.padEnd(16), v.type.padEnd(8), v.path.value].into$.out() )
+    paths.map( (v, k) => in$('  ', k.padEnd(16), v.type.padEnd(8), v.path.value).out() )
   , { dotsat: 0, test: 0, description: 'Show working paths.' } )
 
 new Task(  'args', () =>
@@ -251,7 +250,7 @@ new Task(  'args', () =>
   , { dotsat: 0, test: 0, description: 'Show arguments.' }  )
 
 new Task(  'help', () =>
-    taskBook.forEach( (v, k) => ['  ', k.padEnd(16), v.options.description].into$.out() )
+    taskBook.forEach( (v, k) => in$('  ', k.padEnd(16), v.options.description).out() )
   , { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
@@ -277,16 +276,16 @@ new Task(  'update', () => npmMeteor().carry(update)
 
 
 new Task(  'npm-update', () =>
-    select('npm').carry(npmList).carry(npmUpdate)
+    select('npm').chainOver(npmList, npmUpdate)
   , { dotsat: 1, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
 
 new Task(  'npm-install', () =>
-    param ? [paths.pickAt(param)].into$.carry(npmList).carry(npmUpdate) :
-        select('npm').carry(npmList).carry(npmUpdate)
+    param ? in$([paths.pickAt(param)]).chainOver(npmList, npmUpdate) :
+        select('npm').chainOver(npmList, npmUpdate)
   , { dotsat: 1, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
 
 new Task(  'npm-link', () =>
-    select('npmLink').carry(npmLink)
+    select('npmLink').over(npmLink)
   , { dotsat: 0, test: 0, description: 'Link local npm modules.' }  )
 
 const testList = a => a.map(  v =>
@@ -339,7 +338,7 @@ new Task(  'publish', () => npmMeteor().carry(publish)
 
 new Task(  'api-url', () => {
     __._Settings = Settings.value
-    in$.meteor.queryString(__._Settings.google.maps.options).into$.log() }
+    in$.meteor.queryString(__._Settings.google.maps.options).log() }
   , {dotsat: 0, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'settings', () => Settings.log()
