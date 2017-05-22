@@ -1,6 +1,6 @@
 {
   "name": "cubesat",
-  "version": "0.6.86",
+  "version": "0.6.87",
   "os": [
     "!win32"
   ],

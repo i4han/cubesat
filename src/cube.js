@@ -122,12 +122,23 @@ class View {
         __.keys(__._Parts).forEach(k => this[k] = __._Parts[k].bind(__._Parts, view))  }  }
 
 __.Cube     = ()        =>  new Cube()
-__.Module   = name      =>  new Module(name)
 __.Parts    = parts     =>  new Parts(parts)
 __.Settings = settings  =>  new Settings(settings)
 __.View     = view      => [new View(view), __.module(view)]
 __.Template = (...args) => args.slice(1)
-
+__.Module   = (...args) => {
+    if ( args.length === 1 )
+        return new Module(args[0])
+    else if ( args.length === 2 )
+        return new Module(args[0]).body(args[1]).build()
+    else if ( args.length === 4 )
+        return new new Module(args[0]).router(args[1]).body(args[2]).script(args[3]).build()
+    else if ( args.length === 3 )
+        if ('object' === typeof args[1])
+            return new Module(args[0]).router(args[1]).body(args[2]).build()
+        else
+            return new Module(args[0]).body(args[1]).script(args[2]).build()
+}
 
 let mongo = {connected:[]}
 __._db = {}
