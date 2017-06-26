@@ -1,0 +1,5 @@
+Script started on Mon Jun 26 11:11:26 2017
+command: export .env $. /dev/fd/13
+script: export: No such file or directory
+
+Script done on Mon Jun 26 11:11:26 2017

@@ -22,27 +22,28 @@ require.main !== module && ( () => {
         .pipe( valve("gulp-markdox") )
         .pipe( gulp.dest(paths.doc) ) }) })()
 
-in$.method({pj: path.join})
+in$.ductMethod('pj', 'thru', path.join)
 
-let findDir = d => process.cwd().split('/').concat('')
+let findDir = d => in$( process.cwd().split('/').concat('')
     .map( (v,i,a) => a.slice(0, -i-1).join('/') )
-    .find( v => in$(v).pj(d).chain(fs.existsSync).value ).into$ // must be in site path
+    .find( v=>in$(v).pj(d).thru(fs.existsSync).value )  ) // must be in site path
 
 const home          = in$(process.env.HOME).cut()
 home.pj(dot_env).if(fs.existsSync).then( v => dotenv.config( {path: v.value} ) )
-const site_path     = findDir('.sat').cut()
-// const dot_sat_path  = site_path.pj('.sat')
-// const mobile_config = site_path.pj('mobile-config.js')
+const site_path     = findDir('.sat').cut().is(undefined).elseSelf(v=>v
+    .pj('lib', 'settings.js').let('site_settings')
+    .from(v).pj('.settings.json').let('deploy_settings')
+)
 const dot_cubesat   = '.cubesat'
-const cubesat_path  = findDir(dot_cubesat).if('').then(home).else(v=>v).result.pj(dot_cubesat).cut()
-const site_settings = site_path.pj('lib', 'settings.js').value
-const deploy_settings = site_path.pj('.settings.json').value
+const cubesat_path  = findDir(dot_cubesat).is('').then(v=>home).else(v=>v).self(v=>v.result).pj(dot_cubesat).cut()
 const global_settings = cubesat_path.pj('settings.js').cut()
-const workspace     = in$(process.env.WORKSPACE).cut() || home.pj('workspace').cut()
+const workspace     = in$(process.env.WORKSPACE || '~/workspace').cut() 
 const test_path     = workspace.pj('test').cut()
 const packages_path = test_path.pj(packages_dir).cut()
 const node_modules  = in$(process.env.NODE_MODULES) || findDir('node_modules') || home // NODE_MODULES is not standard. but
-const paths2test    = 'client server lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
+const paths2test    = 'client server imports lib public private resources'.split(' ')       // NODE_PATH may create confusion so don't use it.
+// const site_settings = site_path.pj('lib', 'settings.js').value
+// const deploy_settings = site_path.pj('.settings.json').value
 
 let taskBook = in$({})
 let tasks, options
@@ -152,7 +153,7 @@ paths = in$({
   , test:      { type: "site",    name: "test",      path: test_path,         cd:1, npmLink: 'incredibles' }
   , package:   { type: "package", name: "packages",  path: packages_path }
   , jq:        { type: "package", name: "isaac:jquery-x",    git: 0,  cd:1 }
-  , sq:        { type: "package", name: "isaac:style-query", git: 0,  cd:1 }
+  , sq:        { type: "package", name: "isaac:style-query", git: 1,  cd:1, meteor:[site_path] }
   , cs:        { type: "package", name: "isaac:cubesat",     git: 1,  cd:1
                , npm:[node_modules], meteor:[site_path],     npmName: 'cubesat',    npmLink: 'incredibles', npmEnv:1 }
   , in:        { type: "package", name: "isaac:incredibles", git: 1,  cd:1
@@ -163,11 +164,11 @@ paths = in$({
 
 let v, param = argv._[0]
 
-const getVersion = p => in$(p).chain(require).value.version
-const version = () => paths.pickAt(param, 'path').pj('package.json').chain(getVersion).value
-const addVersion = s => s.split('.').map( (v,i,a)=>(i != a.length - 1) ? v : (parseInt(v) + 1).toString() ).join('.')
-const increaseVersion = (file, data) =>
-    data.replace(new RegExp('"version":\\s*"' + (v = getVersion(file)) + '"'), '"version": "' + addVersion(v) + '"')
+const getVersion = p => in$(p).thru(require).value.version
+const version = () => paths.pickAt(param, 'path').pj('package.json').thru(getVersion).value
+const addVersionNumber = s => s.split('.').map( (v,i,a)=>(i != a.length - 1) ? v : (parseInt(v) + 1).toString() ).join('.')
+const addVersion = (file, data) =>
+    data.replace(new RegExp('"version":\\s*"' + (v = getVersion(file)) + '"'), '"version": "' + addVersionNumber(v) + '"')
 
 const gitPush = (commit, _path) => {
     let p = _path.shift()
@@ -186,9 +187,9 @@ const meteorPublish = (path, after) => (spawn_command('meteor', 'publish', [], p
 const publish = paths => {
     let v = paths.shift(), path = v.path.cut()
     editFile(  path.pj( v.meteor ? package_js : package_json ),
-        (f, d) => increaseVersion( path.pj(package_json), d ), (f, d) =>
+        (f, d) => addVersion( path.pj(package_json), d ), (f, d) =>
         v.meteor ? meteorPublish(  path, () =>
-                v.npm ? editFile(  path.pj(package_json), increaseVersion, (f, d) =>
+                v.npm ? editFile(  path.pj(package_json), addVersion, (f, d) =>
                         npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )
                       : paths.length ? publish(paths) : {}  )
                  : npmPublish( path, paths.length ? () => publish(paths) : () => {} )  )  }
@@ -196,6 +197,7 @@ const meteorRun     = (path, port)  => spawn_command( 'meteor', 'run', argv._.co
 
 const npmUpdate = (npms, install) => {
     if (!npms.size()) return
+    console.log(npms)
     let v = npms.shift().result
     let name = install ? '.' : v.name
     spawn_command(    'npm', 'remove',  [v.name, '--save', '--prefix', v.prefix], v.path ).on(  'exit', () =>
@@ -203,18 +205,20 @@ const npmUpdate = (npms, install) => {
             npmUpdate(npms, install)  )  }
 
 const meteorUpdate = (npms, meteors) => {
+    console.log(1, npms, 2, meteors)
     if (!meteors.length)
         return npms.length ? npmUpdate(npms) : undefined
     let v = meteors.shift()
+    console.log(3, v, 4, meteors)
     spawn_command(  'meteor', 'update', [v.name], v.path).on('exit',
         meteors.length ? () => meteorUpdate(npms, meteors) : () => npmUpdate(npms)  )  }
 
-const npmList = arr => arr.reduce(  (a,v) =>
+const npmList = arr => arr.reduce( (a,v) =>
     a.append( v.npm.map( w => ({name: v.npmName || v.name, prefix:w.value, path:v.path.value }) ) ), in$([])  )
 
 const update = paths => meteorUpdate(
-    select('npm').over(npmList),
-    paths.filter(v => v.meteor)
+    select('npm').self(npmList),
+    select('meteor')
         .reduce( ((a,v,i) => a.concat( v.meteor.map( w => ({name:v.name, path:w}) ) )), [] )  )
 
 const npmLink = npms => {
@@ -242,7 +246,7 @@ new Task(  'env',  () =>
   , { dotsat: 0, test: 0, description: 'Show arguments and environment variables.' } )
 
 new Task(  'paths', () =>
-    paths.map( (v, k) => in$('  ', k.padEnd(16), v.type.padEnd(8), v.path.value).out() )
+    paths.map( (v, k) => in$('  ', k.padEnd(16), v.type.padEnd(8), v.path.value).print() )
   , { dotsat: 0, test: 0, description: 'Show working paths.' } )
 
 new Task(  'args', () =>
@@ -250,13 +254,13 @@ new Task(  'args', () =>
   , { dotsat: 0, test: 0, description: 'Show arguments.' }  )
 
 new Task(  'help', () =>
-    taskBook.forEach( (v, k) => in$('  ', k.padEnd(16), v.options.description).out() )
+    taskBook.forEach( (v, k) => in$('  ', k.padEnd(16), v.options.description).print() )
   , { dotsat: 0, test: 0, description: 'Help message.' }  )
 
 new Task(  'add-version', () => {
     let p = paths.pickAt(param, 'path').cut()
-    editFile( p.pj(package_js), (f, d) => increaseVersion( p.pj(package_json).value, d), () =>
-        editFile( p.pj(package_json), increaseVersion, version)) }
+    editFile( p.pj(package_js), (f, d) => addVersion( p.pj(package_json).value, d), () =>
+        editFile( p.pj(package_json), addVersion, version)) }
   , { dotsat: 0, test: 0, description: 'Increase version in pakage.json.', arg0: 1 }  )
 
 new Task(  'version', () => console.log(version())
@@ -269,19 +273,19 @@ new Task(  'jasmine', () => {
   , { dotsat: 0, test: 0, description: 'Run Jasmine test framework.' }  )
 
 const npmMeteor = () => paths.filter( v=>v.npm || v.meteor ).map(v=>v).into$
-const select = p => paths.filter( (v,k) => v[p] )  //.map(v=>v)
+const select = p => paths.filter( v=>v[p] )  //.map(v=>v)
 
-new Task(  'update', () => npmMeteor().carry(update)
+new Task(  'update', () => paths.filter( v=>v.npm || v.meteor ).self(update)
   , { dotsat: 1, test: 0, description: 'Update packages.', thirdCommand: 1 }  )
 
 
 new Task(  'npm-update', () =>
-    select('npm').chainOver(npmList, npmUpdate)
+    select('npm').self([npmList, npmUpdate])
   , { dotsat: 1, test: 0, description: 'Update npm modules.', thirdCommand: 1 })
 
 new Task(  'npm-install', () =>
-    param ? in$([paths.pickAt(param)]).chainOver(npmList, npmUpdate) :
-        select('npm').chainOver(npmList, npmUpdate)
+    param ? in$([paths.pickAt(param)]).self([npmList, npmUpdate]) :
+        select('npm').self([npmList, npmUpdate])
   , { dotsat: 1, test: 0, description: 'Install local npm modules.', thirdCommand: 1 }  )
 
 new Task(  'npm-link', () =>
@@ -303,9 +307,9 @@ new Task(  'alias', alias,
 
 new Task(  'script', () => {
     alias()
-    home.pj(dot_env).chain([fs.readFile, 'utf8', (e, data) => error(e) ||
-        data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log()])
-    global_settings.chain(require, JSON.stringify).log(v => `export GLOBAL_SETTINGS='${v.value}'`)
+    home.pj(dot_env).thru(fs.readFile, 'utf8', (e, data) => error(e) ||
+        data.replace(/^\s*([a-zA-Z])/mg, "export $1").into$.log())
+    global_settings.thru([require, JSON.stringify]).log(v => `export GLOBAL_SETTINGS='${v.value}'`)
     paths.filter( v=>v.npmEnv).forEach( v=> (`export ${v.npmName.toUpperCase()}_PATH=` + v.path.value).into$.log() ) }
   , { dotsat: 0, test: 0, description: 'Print export .env $. <(sat script)' }  )
 
@@ -350,11 +354,11 @@ new Task(  'settings.json', () =>
             public: JSON.parse(process.env.GLOBAL_SETTINGS).public
           , "galaxy.meteor.com": { env: data.match(/process\.env\.[A-Z0-9_]+/mg)
                 .map(v => v.slice(12)).reduce( (a,v) => a.set(v, process.env[v]), in$({}) ).value  }
-        }).chain([JSON.stringify, null, 4]).log() )
+        }).thru(JSON.stringify, null, 4).log() )
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'global-settings', () =>
-    in$(process.env.GLOBAL_SETTINGS).chain(JSON.parse).log()
+    in$(process.env.GLOBAL_SETTINGS).thru(JSON.parse).log()
   , {dotsat: 1, test: 0, description: 'Settings', settings: 1})
 
 new Task(  'deploy', () =>

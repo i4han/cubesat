@@ -134,12 +134,30 @@ let styleLoop = function(obj) {
   })(this));
 };
 
+cube._NewStyle = o =>
+    style$( ( 'Bin$'  === o.constructor.name ? o : in$.from(o) ).forEach( (v, k) =>
+        Object.assign(v, { [k]: (
+            ( 'Bin$'  === v.constructor.name ? v : in$.from(v) ).forEach( (w, l) => {
+                if ('object' === typeof w) {
+                     Object.assign(v, {[l]: w.toString()})  }  }
+            ).value
+        ) })  ).value  )
+
+cube.__NewStyle = o =>
+    style$( in$.from(o).reduce( ((a, v, k) =>
+        Object.assign(a, { [k]: (
+            ( 'Bin$'  === v.constructor.name ? v : in$.from(v)).forEach( (w, l) => {
+                // if ('Bin$'  === v.constructor.name) {
+                if ('object' === typeof w) {
+                    Object.assign(v, {[l]: w.toString()})  }
+                }
+            ).value
+        ) })  ), {}) )
+
 cube.Style = function(_) {
   var obj;
   _.part = __._AttrParts;
   return style$(__.reduceKeys((obj = __.fixup.call(_, _.style)), {}, (function(_this) {
-    return function(o, k) {
-      return __.object(o, idclassKey.call(_, k), styleLoop.call(_, obj[k]));
-    };
+    return (o, k) => __.object(o, idclassKey.call(_, k), styleLoop.call(_, obj[k]))
   })(this)));
 };

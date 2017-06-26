@@ -64,7 +64,8 @@ class Module {
     events     (o) { return __.object(this, '_.events',  o) }
     script     (o) { return __.object(this, '_.script',  o) }
     methods    (o) { return __.object(this, '_.methods', o) }
-    style      (o) { return __.object(this, '_.style',   o) }
+    style      (o) { return __.object(this, '_.style',   o) } // cube.Style 'local_' styleLoop
+    css        (o) { return __.object(this, '_.css',     o) } // cube.NewStyle in$
     onStartup  (f) { return __.object(this, '_.onStartup',   f(this.properties().user)) }
     onServer   (f) { return __.object(this, '_.onServer',    f(this.properties().user)) }
     onRendered (f) { return __.object(this, '_.onRendered',  f(this.properties().user)) }
@@ -126,24 +127,18 @@ __.Parts    = parts     =>  new Parts(parts)
 __.Settings = settings  =>  new Settings(settings)
 __.View     = view      => [new View(view), __.module(view)]
 __.Template = (...args) => args.slice(1)
-__.Module   = (...args) => {
-    if ( args.length === 1 )
-        return new Module(args[0])
-    else if ( args.length === 2 )
-        return new Module(args[0]).body(args[1]).build()
-    else if ( args.length === 4 )
-        return new new Module(args[0]).router(args[1]).body(args[2]).script(args[3]).build()
-    else if ( args.length === 3 )
-        if ('object' === typeof args[1])
-            return new Module(args[0]).router(args[1]).body(args[2]).build()
-        else
-            return new Module(args[0]).body(args[1]).script(args[2]).build()
-}
+__.Module   = (...args) =>
+    args.length === 1 ? new Module(args[0]) :
+    args.length === 2 ? new Module(args[0]).body(args[1]).build() :
+    args.length === 3 ? new Module(args[0]).router(args[1]).body(args[2]).build() : undefined
+
 
 let mongo = {connected:[]}
 __._db = {}
+let noMongo = true;
 
 const mongoServer = (m, cs) => {
+  if (noMongo) return
   __.isArray(cs) && (cs = __.object({}, cs, Array(cs.length).fill({})))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
       mongo.connected.push(k)
@@ -163,6 +158,7 @@ const subscribe   = (m, k) => {
     __._db[k].subscribes.filter(f => __.isFunction(f)).map(f => f(m, __._db[k])) }
 
 const mongoClient = (m, cs) => { // cs: collections. ex: 'Depth'
+  if (noMongo) return
   __.isArray(cs) && (cs = __.object({}, cs, Array(cs.length).fill({})))
   __.keys(cs).filter(k => ! mongo.connected.includes(k)).map(k => {
       mongo.connected.push(k)
@@ -188,6 +184,37 @@ const router = (o, m) => {
 }
 
 
+Css = {}
+Mixin = {}
+
+const mixin = o => {
+    Object.keys(o).forEach( k=> {
+        if (Mixin[k] && Array.isArray(o[k])) {
+            Object.assign(o, Mixin[k](...o[k]))
+            delete o[k]
+        }
+    })
+    return o }
+
+const objectValue = o => 'Bin$' === o.constructor.name ? o.value : o
+
+__.CSS  = o => Object.keys(o).forEach( k=> {
+    Css[k] =
+        Css[k] === undefined  ? objectValue(o[k])  :
+        Array.isArray(Css[k]) ? Css[k].concat(objectValue(o[k])) :
+            [Css[k]].concat(objectValue(o[k]))  })
+
+__.Mixin = (name, f) => Mixin[name] = f
+
+let regulateObject = o => {
+    Object.keys(o).forEach( k=> {
+        if ( Array.isArray(o[k]) ) {
+            o[k] = o[k].reduce(((a,v)=> Object.assign(a, mixin(objectValue(v)))), {})  }
+        else
+            mixin(o[k])
+    })
+    return o  }
+
 Meteor.startup(() => {
   let v, _
   if (Meteor.isServer) {
@@ -197,26 +224,30 @@ Meteor.startup(() => {
       ;(v = _._.mongo)       &&  mongoServer(_, v)
       ;(v = _._.onServer)    &&  v.call(_) }) }
   else if (Meteor.isClient) {
+    regulateObject(Css)
+    style$(Css)
     cube.installParts()
     __.keys(__._Modules).map(n => {
       _ = __._Modules[n]
-      _._.style              &&  cube.Style(_._)
+      _._.style              &&  cube.Style(_._) // cube.Style(v)
+      _._.css                &&  regulateObject(_._.css) || style$(_._.css)
       ;(v = _._.head)        &&  head(v)
       ;(v = _._.script)      &&  script(v)
       ;(v = _._.router)      && (__.isEmpty(v) || router(v, _))
       ;(v = _._.mongo)       &&  mongoClient(_.user, v)
       ;(v = _._.onStartup)   &&  v.call(_, _)
-      //;(v = _.property.path) &&  Router.route(n, {path: v, layoutTemplate: _.property.layout || 'layout'})
-      ;(v = _._.template)    && (Template[n] = new Template('Template.' + n, v))
-      ;(v = _._.body)        && (Template[n] = new Template('Template.' + n,
+      //;(v = _.property.path) &&  Router.route(n, {path: v, layoutBlaze.Template: _.property.layout || 'layout'})
+      ;(v = _._.template)    && (Blaze.Template[n] = new Blaze.Template('Template.' + n, v))
+      ;(v = _._.body)        && (Blaze.Template[n] = new Blaze.Template('Template.' + n,
             ((v, name) => function () { return v(in$.template(this, name)) })(v, _.name()) ))
-      ;(v = _._.events)      &&  Template[n] && Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
-      ;(v = _._.helpers)     &&  Template[n] && Template[n].helpers(v) // __.function(v)
-      ;(v = _._.onRendered)  &&  Template[n].onRendered(v) // __.function(v)
+      ;(v = _._.events)      &&  Blaze.Template[n] && Blaze.Template[n].events(__.tideEventKey(v, __.key2id.bind(_)))
+      ;(v = _._.helpers)     &&  Blaze.Template[n] && Blaze.Template[n].helpers(v) // __.function(v)
+      ;(v = _._.onRendered)  &&  Blaze.Template[n].onRendered(v) // __.function(v)
       ;(v = _._.onStartup)   &&  v()
-      'onCreated onRendered onDestroyed'.split(' ').forEach(d => _._[d] && Template[n][d](_._[d])) }) }
+      'onCreated onDestroyed'.split(' ').forEach(d => _._[d] && Blaze.Template[n][d](_._[d])) }) }
     __.runMeteorStartup()
 })
+
 Router.route('/-/:shorten', (function() {
   this.response.writeHead(301, {
     Location: (() => {
